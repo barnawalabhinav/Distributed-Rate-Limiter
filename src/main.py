@@ -1,19 +1,30 @@
-import glob
-import logging
 import os
-import signal
 import sys
 import time
+import glob
+import signal
+import logging
 from threading import current_thread
+
 from constants import *
+from client import Client
+from worker import Worker
+from loadBal import LoadBal
+from database import DataBase
+from apiServer import ApiServer
+from process import Process
 
-processes = []
 
+servers = []
+clients = []
+workers = []
 
 def sig_handler(signum, frame):
-    for w in processes:
-        w.kill()
-    logging.info('Bye!')
+    for proc in clients:
+        proc.kill()
+    for proc in servers:
+        proc.kill()
+    logging.info('Stopped!')
     sys.exit()
 
 # This provides the interface to the web-dashboard where we display the results and perform experiments
@@ -38,6 +49,25 @@ def dist_rate_limiter():
 
     # TODO: Implement main file that stiches the processes and starts and ends the execution
 
+    load_bal = LoadBal(START_PORT - 1)
+    database = DataBase(START_PORT - 2)
+
+    for ser_id in range(N_SERVERS):
+        servers.append(ApiServer(START_PORT + ser_id))
+        for _ in range(N_WORKERS):
+            workers.append(Worker(cpu = ser_id + 2))
+
+    for idx, worker in enumerate(workers):
+        worker.create_and_run(apiServer = servers[idx // N_WORKERS], database = database)
+
+    for _ in range(N_CLIENTS):
+        clients.append(Client())
+        clients[-1].create_and_run(loadBal = load_bal)
+
+    server_id = 0
+    while (True):
+        load_bal.dist_request(servers[server_id], cnt=1)
+        server_id = (server_id + 1) % N_SERVERS
 
 if __name__ == "__main__":
     dist_rate_limiter()
