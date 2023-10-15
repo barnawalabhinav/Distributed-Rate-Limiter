@@ -15,7 +15,6 @@ class LoadBal:
     def __init__(self, port: int):
         self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
         self.rds.flushall()
-        # self.rds.xgroup_create(LOAD, SER_GRP, id="0", mkstream=True)
 
     # TODO: Implement read and write operations and other functionalities, decide if it has to be fault tolerant
 
@@ -23,7 +22,8 @@ class LoadBal:
         self.rds.lpush(LOAD, cli_req)
 
     def dist_request(self, server: ApiServer, cnt: int):
-        req = self.rds.lpop(LOAD, cnt)
-        if not req:
+        reqs = self.rds.lpop(LOAD, cnt)
+        if not reqs or len(reqs) == 0:
             return
-        server.add_request(req)
+        for req in reqs:
+            server.add_request(req)

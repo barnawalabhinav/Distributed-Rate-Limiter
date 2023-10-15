@@ -1,1 +1,3 @@
 temp_dir
+*.rdb
+*__pycache__*

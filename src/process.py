@@ -27,7 +27,7 @@ class Process(ABC):
                 os.sched_setaffinity(pid, self.cpu)
             # Child worker process
             self.pid = os.getpid()
-            self.name = f"worker-{self.pid}"
+            self.name = f"process-{self.pid}"
             thread = current_thread()
             thread.name = self.name
             logging.info(f"Starting")

@@ -19,10 +19,11 @@ servers = []
 clients = []
 workers = []
 
+
 def sig_handler(signum, frame):
     for proc in clients:
         proc.kill()
-    for proc in servers:
+    for proc in workers:
         proc.kill()
     logging.info('Stopped!')
     sys.exit()
@@ -55,19 +56,20 @@ def dist_rate_limiter():
     for ser_id in range(N_SERVERS):
         servers.append(ApiServer(START_PORT + ser_id))
         for _ in range(N_WORKERS):
-            workers.append(Worker(cpu = ser_id + 2))
-
-    for idx, worker in enumerate(workers):
-        worker.create_and_run(apiServer = servers[idx // N_WORKERS], database = database)
+            workers.append(Worker(cpu=[ser_id + 2]))
 
     for _ in range(N_CLIENTS):
         clients.append(Client())
-        clients[-1].create_and_run(loadBal = load_bal)
+        clients[-1].create_and_run(loadBal=load_bal, gap=10000)
+
+    for idx, worker in enumerate(workers):
+        worker.create_and_run(apiServer = servers[idx // N_WORKERS], database = database)
 
     server_id = 0
     while (True):
         load_bal.dist_request(servers[server_id], cnt=1)
         server_id = (server_id + 1) % N_SERVERS
+
 
 if __name__ == "__main__":
     dist_rate_limiter()
