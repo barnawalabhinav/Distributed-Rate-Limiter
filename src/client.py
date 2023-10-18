@@ -17,7 +17,7 @@ class Client(Process):
         # TODO: Implement the task of clients, send requests at various frequency
 
         while True:
-            loadBal.add_request(str(self.pid) + "-" + str(time.time()))
+            loadBal.add_request(str(self.pid) + "-" + str(int(time.time() + 0.5)))
             time.sleep(time_gap/1000)
 
         logging.info("Exiting")

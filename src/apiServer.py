@@ -2,24 +2,29 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Iterable, Optional, Any
+from typing import Iterable, Optional, Any, Tuple
 from redis.client import Redis
 
-from constants import CLI_REQ, LOAD, WRK_GRP, IDLE_TIME, N_WORKERS
+from constants import CLI_REQ, LOAD, WRK_GRP, IDLE_TIME, N_WORKERS, REQ_LIMIT
 from src.database import DataBase
 from src.process import Process
 
 
 class RLWorker(Process):
+    def _process_req(self, cli_id: str, req_time: int, db: DataBase) -> Tuple[int, str]:
+        if db.get_req_count(cli_id) > REQ_LIMIT:
+            print(f"Rejecting Request from time {req_time}")
+            return -1, "refuted"
+
+        db.add_req(cli_id, req_time)
+        print(f"Accepting Request from time {req_time}")
+        return -1, "accepted"
+
     def run(self, **kwargs: Any) -> None:
         apiServer: ApiServer = kwargs['api_server']
         database: DataBase = kwargs['database']
 
         # TODO: Implement task of workers, fetch requests from api server's redis-stream and process
-
-        def process_req(id: str, req: str):
-            print('Rejecting Request')
-            return -1, "refuted"
 
         while True:
             reqs = apiServer.fetch_request(self.name, cnt=2)
@@ -29,9 +34,8 @@ class RLWorker(Process):
             result = []
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
-                id = req.split("-")
-                cli_id, req_id = id[0], id[1]
-                rate, res = process_req(cli_id, req_id)
+                cli_id, req_time = req.split("-")
+                rate, res = self._process_req(cli_id, int(req_time), database)
                 result.append((cli_id, str(rate)))
                 result.append((req, res))
 
