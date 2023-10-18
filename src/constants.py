@@ -18,3 +18,5 @@ IDLE_TIME: Final[int] = 1000  # In milliseconds
 
 N_CLIENTS: Final[int] = 8
 N_WORKERS: Final[int] = 2
+
+PER_SERVER_REQ_CNT: Final[int] = 1

@@ -4,7 +4,7 @@ import os
 import sys
 import signal
 import logging
-from typing import Any, Final
+from typing import Any
 from abc import abstractmethod, ABC
 from threading import current_thread
 
