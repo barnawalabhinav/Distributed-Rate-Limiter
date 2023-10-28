@@ -21,10 +21,13 @@ class LoadBal:
 
     def dist_request(self, servers: List[ApiServer]):
         cur_server = 0
+        req_id = 0
         while True:
             reqs = self.rds.lpop(LOAD, PER_SERVER_REQ_CNT)
             if reqs and len(reqs):
                 for req in reqs:
+                    req = req.decode() + '-' + str(req_id)
                     servers[cur_server].add_request(req)
+                    req_id += 1
 
             cur_server = (cur_server + 1) % N_SERVERS

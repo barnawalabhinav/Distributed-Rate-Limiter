@@ -22,10 +22,10 @@ class DataBase:
         return self.rds.get(key)
 
     def get_req_count(self, cli_id: str) -> int:
-        return len(self.rds.keys(f'{cli_id}:*'))
+        return len(self.rds.keys(f'{cli_id}:Processed:*'))
 
-    def add_req(self, cli_id: str, req_time: int) -> None:
+    def add_req(self, cli_id: str, req_time: int, req_id: str) -> None:
         time_to_expiry = REQ_EXPIRY_TIME - int(time.time() + 0.5) + req_time
         if time_to_expiry > 0:
-            self.rds.set(f'{cli_id}:{req_time}', 1)
-            self.rds.expire(f'{cli_id}:{req_time}', time_to_expiry)
+            self.rds.set(f'{cli_id}:Processed:{req_time}:{req_id}', 1)
+            self.rds.expire(f'{cli_id}:Processed:{req_time}:{req_id}', time_to_expiry)

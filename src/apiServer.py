@@ -11,13 +11,13 @@ from src.process import Process
 
 
 class RLWorker(Process):
-    def _process_req(self, cli_id: str, req_time: int, db: DataBase) -> Tuple[int, str]:
-        if db.get_req_count(cli_id) > REQ_LIMIT:
-            print(f"Rejecting Request from time {req_time}")
+    def _process_req(self, cli_id: str, req_time: int, req_id: str, db: DataBase) -> Tuple[int, str]:
+        if db.get_req_count(cli_id) >= REQ_LIMIT:
+            print(f"Rejecting Request from time {req_time} at time {int(time.time() + 0.5)}")
             return -1, "refuted"
 
-        db.add_req(cli_id, req_time)
-        print(f"Accepting Request from time {req_time}")
+        db.add_req(cli_id, req_time, req_id)
+        print(f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
         return -1, "accepted"
 
     def run(self, **kwargs: Any) -> None:
@@ -34,8 +34,8 @@ class RLWorker(Process):
             result = []
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
-                cli_id, req_time = req.split("-")
-                rate, res = self._process_req(cli_id, int(req_time), database)
+                cli_id, req_time, req_id = req.split("-")
+                rate, res = self._process_req(cli_id, int(req_time), req_id, database)
                 result.append((cli_id, str(rate)))
                 result.append((req, res))
 
@@ -72,16 +72,16 @@ class ApiServer:
         self.rds.xadd(LOAD, {CLI_REQ: cli_req})
 
     def fetch_request(self, worker_name, cnt):
-        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt)
+        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
         if fileName:
             return fileName[0][1]
-        pending_msgs = self.rds.xpending(LOAD, WRK_GRP)
-        if (pending_msgs['pending'] == 0):
-            return None
-        fileName = self.rds.xautoclaim(LOAD, WRK_GRP, worker_name, IDLE_TIME, 0, count=cnt)
-        if (len(fileName[1]) > 0):
-            return fileName[1]
-        return None
+        # pending_msgs = self.rds.xpending(LOAD, WRK_GRP)
+        # if (pending_msgs['pending'] == 0):
+        #     return None
+        # fileName = self.rds.xautoclaim(LOAD, WRK_GRP, worker_name, IDLE_TIME, 0, count=cnt)
+        # if (len(fileName[1]) > 0):
+        #     return fileName[1]
+        # return None
 
     def kill(self) -> None:
         self.rate_limiter.kill()

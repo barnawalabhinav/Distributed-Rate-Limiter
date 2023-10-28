@@ -53,7 +53,7 @@ def dist_rate_limiter():
 
     for _ in range(N_CLIENTS):
         clients.append(Client())
-        clients[-1].create_and_run(loadBal=load_bal, gap=10000)
+        clients[-1].create_and_run(loadBal=load_bal, gap=1000)
 
     load_bal.dist_request(servers)
 
