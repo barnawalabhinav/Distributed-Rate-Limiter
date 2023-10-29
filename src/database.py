@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import os
-import json
 import time
-from typing import Final
+
 from redis.client import Redis
+
+from src.constants import REQ_EXPIRY_TIME
 
 
 # This is the redis client providing interface to interact with common redis database
@@ -20,3 +20,12 @@ class DataBase:
 
     def get(self, key):
         return self.rds.get(key)
+
+    def get_req_count(self, cli_id: str) -> int:
+        return len(self.rds.keys(f'{cli_id}:Processed:*'))
+
+    def add_req(self, cli_id: str, req_time: int, req_id: str) -> None:
+        time_to_expiry = REQ_EXPIRY_TIME - int(time.time() + 0.5) + req_time
+        if time_to_expiry > 0:
+            self.rds.set(f'{cli_id}:Processed:{req_time}:{req_id}', 1)
+            self.rds.expire(f'{cli_id}:Processed:{req_time}:{req_id}', time_to_expiry)
