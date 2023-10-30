@@ -20,14 +20,13 @@ class RLWorker(Process):
         print(f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
         return -1, "accepted"
 
+    # Implement task of workers, fetch requests from api server's redis-stream and process
     def run(self, **kwargs: Any) -> None:
-        apiServer: ApiServer = kwargs['api_server']
+        rateLimiter: RateLimiter = kwargs['rate_limiter']
         database: DataBase = kwargs['database']
 
-        # TODO: Implement task of workers, fetch requests from api server's redis-stream and process
-
         while True:
-            reqs = apiServer.fetch_request(self.name, cnt=2)
+            reqs = rateLimiter.fetch_request(self.name, cnt=2)
             if not reqs:
                 time.sleep(1)
                 continue
@@ -42,29 +41,32 @@ class RLWorker(Process):
             for (key, arg) in result:
                 database.set(key, arg)
 
-        logging.info("Exiting")
 
 
-class RateLimiter:
-    def __init__(self, api_server: ApiServer, db: DataBase,
-                 cpu: Optional[int] = None):
-        self.rl_workers = []
-        for _ in range(N_WORKERS):
-            self.rl_workers.append(RLWorker(cpu=cpu))
-            self.rl_workers[-1].create_and_run(api_server=api_server, database=db)
+# class RateLimiter:
+#     def __init__(self, api_server: ApiServer, db: DataBase,
+#                  cpu: Optional[int] = None):
+#         self.rl_workers = []
+#         for _ in range(N_WORKERS):
+#             self.rl_workers.append(RLWorker(cpu=cpu))
+#             self.rl_workers[-1].create_and_run(api_server=api_server, database=db)
 
-    def kill(self) -> None:
-        for worker in self.rl_workers:
-            worker.kill()
+#     def kill(self) -> None:
+#         for worker in self.rl_workers:
+#             worker.kill()
 
 
 # This is the redis client providing interface to interact with main rate limiters on api servers
-class ApiServer:
+class RateLimiter:
     def __init__(self, port: int, db: DataBase, cpu: Optional[Iterable[int]] = None):
         self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
         self.rds.flushall()
         self.rds.xgroup_create(LOAD, WRK_GRP, id="0", mkstream=True)
-        self.rate_limiter = RateLimiter(self, cpu=cpu, db=db)
+        # self.rate_limiter = RateLimiter(self, cpu=cpu, db=db)
+        self.rl_workers = []
+        for _ in range(N_WORKERS):
+            self.rl_workers.append(RLWorker(cpu=cpu))
+            self.rl_workers[-1].create_and_run(rate_limiter=self, database=db)
 
     # TODO: Implement read and write operations and other functionalities, need to make it fault tolerant
 
@@ -84,4 +86,6 @@ class ApiServer:
         # return None
 
     def kill(self) -> None:
-        self.rate_limiter.kill()
+        # self.rate_limiter.kill()
+        for worker in self.rl_workers:
+            worker.kill()

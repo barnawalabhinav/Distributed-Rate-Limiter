@@ -1,3 +1,4 @@
 temp_dir
 *.rdb
 *__pycache__*
+*.log
