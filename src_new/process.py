@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
-import sys
-import signal
 import logging
-from typing import Any
-from abc import abstractmethod, ABC
+import os
+import signal
+import sys
+from abc import ABC, abstractmethod
 from threading import current_thread
+from typing import Any
 
 
 # Creation of a new process; this class inherited by both workers and clients

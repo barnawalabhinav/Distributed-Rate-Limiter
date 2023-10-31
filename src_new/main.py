@@ -1,15 +1,14 @@
-import os
-import sys
-import signal
 import logging
+import os
+import signal
+import sys
 from threading import current_thread
 
-from constants import *
 from client import Client
-from loadBal import LoadBal
+from constants import *
 from database import DataBase
+from loadBal import LoadBal
 from rateLimiter import RateLimiter
-
 
 servers = []
 clients = []

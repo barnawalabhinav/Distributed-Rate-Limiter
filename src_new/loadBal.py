@@ -1,12 +1,13 @@
 from __future__ import annotations
-from flask import Flask, request, jsonify
 
-from typing import List, Final
+from typing import Final, List
 
+from flask import Flask, jsonify, request
 from redis.client import Redis
 
+from constants import LOAD, N_SERVERS, PER_SERVER_REQ_CNT, REQUEST_PORT
 from rateLimiter import RateLimiter
-from constants import LOAD, PER_SERVER_REQ_CNT, N_SERVERS, REQUEST_PORT
+
 
 class LoadBal:
     def __init__(self, port: int):

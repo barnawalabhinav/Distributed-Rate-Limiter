@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Iterable, Optional, Any, Tuple
+from typing import Any, Iterable, Optional, Tuple
+
 from redis.client import Redis
 
-from constants import CLI_REQ, LOAD, WRK_GRP, IDLE_TIME, N_WORKERS, REQ_LIMIT
+from constants import CLI_REQ, IDLE_TIME, LOAD, N_WORKERS, REQ_LIMIT, WRK_GRP
 from database import DataBase
 from process import Process
 

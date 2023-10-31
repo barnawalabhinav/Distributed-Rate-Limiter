@@ -1,11 +1,13 @@
-import time
 import logging
+import time
 from typing import Any, Final
 
-from process import Process
-from loadBal import LoadBal
-from constants import REQUEST_IP, REQUEST_PORT
 import requests
+
+from constants import REQUEST_IP, REQUEST_PORT
+from loadBal import LoadBal
+from process import Process
+
 
 # This is the a client requesting accesses to the API, interacts with the load balancer
 class Client(Process):
