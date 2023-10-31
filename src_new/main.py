@@ -6,19 +6,19 @@ from threading import current_thread
 
 from client import Client
 from constants import *
-from database import DataBase
-from loadBal import LoadBal
-from rateLimiter import RateLimiter
+from base_redis import BaseRedis
+from load_bal import LoadBal
+from rate_limiter import RateLimiter
 
-servers = []
+rate_limiters = []
 clients = []
 
 
 def sig_handler(signum, frame):
-    for proc in clients:
-        proc.kill()
-    for server in servers:
-        server.kill()
+    for client in clients:
+        client.kill()
+    for rl in rate_limiters:
+        rl.kill()
     logging.info('Stopped!')
     sys.exit()
 
@@ -50,19 +50,20 @@ def dist_rate_limiter():
     # TODO: Implement main file that stiches the processes and starts and ends the execution
 
     load_bal = LoadBal(LB_PORT)
-    database = DataBase(DB_PORT)
+    database = BaseRedis(DB_PORT)
 
     for ser_id in range(N_SERVERS):
-        servers.append(RateLimiter(port=START_PORT + ser_id, cpu=[ser_id + 2], db=database))
+        rate_limiters.append(RateLimiter(port=START_PORT + ser_id, cpu=[ser_id + 2], db=database))
 
     pid = os.fork()
     if pid == 0:
         load_bal.run()
     else:
-        for _ in range(N_CLIENTS):
+        for i in range(N_CLIENTS):
+            print(f'Creating client {i}')
             clients.append(Client())
-            clients[-1].create_and_run(gap=1000)
-        load_bal.dist_request(servers)
+            clients[-1].create_and_run(gap=5000)
+        load_bal.dist_request(rate_limiters)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from flask import Flask, jsonify, request
 from redis.client import Redis
 
 from constants import LOAD, N_SERVERS, PER_SERVER_REQ_CNT, REQUEST_PORT
-from rateLimiter import RateLimiter
+from rate_limiter import RateLimiter
 
 
 class LoadBal:
@@ -28,7 +28,7 @@ class LoadBal:
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    def dist_request(self, servers: List[RateLimiter]):
+    def dist_request(self, rate_limiters: List[RateLimiter]):
         cur_server = 0
         req_id = 0
         while True:
@@ -36,7 +36,7 @@ class LoadBal:
             if reqs and len(reqs):
                 for req in reqs:
                     req = req.decode() + '-' + str(req_id)
-                    servers[cur_server].add_request(req)
+                    rate_limiters[cur_server].add_request(req)
                     req_id += 1
 
             cur_server = (cur_server + 1) % N_SERVERS

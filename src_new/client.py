@@ -5,7 +5,7 @@ from typing import Any, Final
 import requests
 
 from constants import REQUEST_IP, REQUEST_PORT
-from loadBal import LoadBal
+from load_bal import LoadBal
 from process import Process
 
 
