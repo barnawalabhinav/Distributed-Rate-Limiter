@@ -7,12 +7,32 @@ from typing import Any, Iterable, Optional, Tuple
 from redis.client import Redis
 
 from constants import CLI_REQ, IDLE_TIME, LOAD, N_WORKERS, REQ_LIMIT, WRK_GRP
-from database import DataBase
+from base_redis import BaseRedis
 from process import Process
+
+class RLRedis(BaseRedis):
+    def __init__(self, port: int):
+        super().__init__(port)
+        self.rds.xgroup_create(LOAD, WRK_GRP, id="0", mkstream=True)
+
+    def add_request(self, cli_req: str):
+        self.rds.xadd(LOAD, {CLI_REQ: cli_req})
+
+    def fetch_request(self, worker_name, cnt):
+        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
+        if fileName:
+            return fileName[0][1]
+        # pending_msgs = self.rds.xpending(LOAD, WRK_GRP)
+        # if (pending_msgs['pending'] == 0):
+        #     return None
+        # fileName = self.rds.xautoclaim(LOAD, WRK_GRP, worker_name, IDLE_TIME, 0, count=cnt)
+        # if (len(fileName[1]) > 0):
+        #     return fileName[1]
+        # return None
 
 
 class RLWorker(Process):
-    def _process_req(self, cli_id: str, req_time: int, req_id: str, db: DataBase) -> Tuple[int, str]:
+    def _process_req(self, cli_id: str, req_time: int, req_id: str, db: BaseRedis) -> Tuple[int, str]:
         if db.get_req_count(cli_id) >= REQ_LIMIT:
             print(f"Rejecting Request from time {req_time} at time {int(time.time() + 0.5)}")
             return -1, "refuted"
@@ -23,24 +43,24 @@ class RLWorker(Process):
 
     # Implement task of workers, fetch requests from api server's redis-stream and process
     def run(self, **kwargs: Any) -> None:
-        rateLimiter: RateLimiter = kwargs['rate_limiter']
-        database: DataBase = kwargs['database']
+        rl_redis: RLRedis = kwargs['rl_redis']
+        database: BaseRedis = kwargs['database'] if kwargs['database'] is not None else rl_redis
 
         while True:
-            reqs = rateLimiter.fetch_request(self.name, cnt=2)
+            reqs = rl_redis.fetch_request(self.name, cnt=2)
             if not reqs:
                 time.sleep(1)
                 continue
-            result = []
+            # result = []
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
                 cli_id, req_time, req_id = req.split("-")
                 rate, res = self._process_req(cli_id, int(req_time), req_id, database)
-                result.append((cli_id, str(rate)))
-                result.append((req, res))
-
-            for (key, arg) in result:
-                database.set(key, arg)
+            #     result.append((cli_id, str(rate)))
+            #     result.append((req, res))
+            #
+            # for (key, arg) in result:
+            #     database.set(key, arg)
 
 
 
@@ -57,34 +77,17 @@ class RLWorker(Process):
 #             worker.kill()
 
 
-# This is the redis client providing interface to interact with main rate limiters on api servers
 class RateLimiter:
-    def __init__(self, port: int, db: DataBase, cpu: Optional[Iterable[int]] = None):
-        self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
-        self.rds.flushall()
-        self.rds.xgroup_create(LOAD, WRK_GRP, id="0", mkstream=True)
+    def __init__(self, port: int, db: Optional[BaseRedis] = None, cpu: Optional[Iterable[int]] = None):
+        self.rds = RLRedis(port)
         # self.rate_limiter = RateLimiter(self, cpu=cpu, db=db)
         self.rl_workers = []
         for _ in range(N_WORKERS):
             self.rl_workers.append(RLWorker(cpu=cpu))
-            self.rl_workers[-1].create_and_run(rate_limiter=self, database=db)
+            self.rl_workers[-1].create_and_run(rl_redis=self.rds, database=db)
 
-    # TODO: Implement read and write operations and other functionalities, need to make it fault tolerant
-
-    def add_request(self, cli_req: str):
-        self.rds.xadd(LOAD, {CLI_REQ: cli_req})
-
-    def fetch_request(self, worker_name, cnt):
-        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
-        if fileName:
-            return fileName[0][1]
-        # pending_msgs = self.rds.xpending(LOAD, WRK_GRP)
-        # if (pending_msgs['pending'] == 0):
-        #     return None
-        # fileName = self.rds.xautoclaim(LOAD, WRK_GRP, worker_name, IDLE_TIME, 0, count=cnt)
-        # if (len(fileName[1]) > 0):
-        #     return fileName[1]
-        # return None
+    def add_request(self, cli_req: str) -> None:
+        self.rds.add_request(cli_req)
 
     def kill(self) -> None:
         # self.rate_limiter.kill()

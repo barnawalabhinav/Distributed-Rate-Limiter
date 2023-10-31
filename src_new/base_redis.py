@@ -3,12 +3,11 @@ from __future__ import annotations
 import time
 
 from redis.client import Redis
-
 from constants import REQ_EXPIRY_TIME
 
 
 # This is the redis client providing interface to interact with common redis database
-class DataBase:
+class BaseRedis:
     def __init__(self, port):
         self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
         self.rds.flushall()
