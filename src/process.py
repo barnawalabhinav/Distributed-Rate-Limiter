@@ -4,6 +4,7 @@ import os
 import sys
 import signal
 import logging
+import psutil
 from typing import Any
 from abc import abstractmethod, ABC
 from threading import current_thread
@@ -23,8 +24,11 @@ class Process(ABC):
         pid = os.fork()
         assert pid >= 0
         if pid == 0:
-            if self.cpu is not None:
-                os.sched_setaffinity(pid, self.cpu)
+            if sys.platform.startswith('linux') and self.cpu is not None:
+                try:
+                    os.sched_setaffinity(pid, self.cpu)
+                except AttributeError:
+                    print("os.sched_setaffinity not available on this platform.")
             # Child worker process
             self.pid = os.getpid()
             self.name = f"process-{self.pid}"
