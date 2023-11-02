@@ -2,11 +2,12 @@ import logging
 import os
 import signal
 import sys
+import time
 from threading import current_thread
 
 from client import Client
 from constants import *
-from base_redis import BaseRedis
+from database import DataBase
 from load_bal import LoadBal
 from rate_limiter import RateLimiter
 
@@ -30,9 +31,9 @@ def dist_rate_limiter():
     # Clear the log file
     open(LOGFILE, 'w').close()
     logging.basicConfig(filename=LOGFILE,
-        level=logging.DEBUG,
-        force=True,
-        format='%(asctime)s [%(threadName)s] %(levelname)s: %(message)s')
+                        level=logging.DEBUG,
+                        force=True,
+                        format='%(asctime)s [%(threadName)s] %(levelname)s: %(message)s')
     thread = current_thread()
     thread.name = "main"
     logging.debug('Done setting up loggers.')
@@ -40,20 +41,27 @@ def dist_rate_limiter():
     signal.signal(signal.SIGINT, sig_handler)
 
     # Set up redis-servers
-    os.system(f"redis-cli -p {LB_PORT} SHUTDOWN; redis-server --port {LB_PORT} --daemonize yes --server_cpulist 0-0")
-    os.system(f"redis-cli -p {DB_PORT} SHUTDOWN; redis-server --port {DB_PORT} --daemonize yes --server_cpulist 1-1")
+    os.system(
+        f"redis-cli -p {LB_PORT} SHUTDOWN; redis-server --port {LB_PORT} --daemonize yes --server_cpulist 0-0")
+    os.system(
+        f"redis-cli -p {DB_PORT} SHUTDOWN; redis-server --port {DB_PORT} --daemonize yes --server_cpulist 1-1")
     for i in range(N_SERVERS):
-        os.system(f"redis-cli -p {START_PORT + i} SHUTDOWN; redis-server --port {START_PORT + i} --daemonize yes --server_cpulist {i+2}-{i+2}")
+        os.system(
+            f"redis-cli -p {START_PORT + i} SHUTDOWN; redis-server --port {START_PORT + i} --daemonize yes --server_cpulist {i+2}-{i+2}")
     # os.system(f"bash configure.sh {N_SERVERS} {START_PORT}")
-
 
     # TODO: Implement main file that stiches the processes and starts and ends the execution
 
+    if COMMON_DB:
+        os.system(f"bash configure_raft.sh {' '.join(RAFT_PORTS)}")
+        time.sleep(1)
+
     load_bal = LoadBal(LB_PORT)
-    database = BaseRedis(DB_PORT)
+    database = DataBase(DB_PORT) if COMMON_DB else None
 
     for ser_id in range(N_SERVERS):
-        rate_limiters.append(RateLimiter(port=START_PORT + ser_id, cpu=[ser_id + 2], db=database))
+        rate_limiters.append(RateLimiter(
+            port=START_PORT + ser_id, cpu=[ser_id + 2], db=database))
 
     pid = os.fork()
     if pid == 0:
@@ -62,7 +70,7 @@ def dist_rate_limiter():
         for i in range(N_CLIENTS):
             print(f'Creating client {i}')
             clients.append(Client())
-            clients[-1].create_and_run(gap=5000)
+            clients[-1].create_and_run(gap=3000)
         load_bal.dist_request(rate_limiters)
 
 

@@ -3,16 +3,27 @@ from __future__ import annotations
 import time
 
 from redis.client import Redis
-from constants import REQ_EXPIRY_TIME
+from constants import REQ_EXPIRY_TIME, LOAD, WRK_GRP, CLI_REQ
 
 
 # This is the redis client providing interface to interact with common redis database
 class BaseRedis:
     def __init__(self, port):
+        print(port)
         self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
         self.rds.flushall()
 
-    # TODO: Implement read and write operations and other functionalities, need to make it fault tolerant
+    def create_group(self):
+        self.rds.xgroup_create(LOAD, WRK_GRP, id="0", mkstream=True)
+
+    def add_request(self, cli_req: str):
+        self.rds.xadd(LOAD, {CLI_REQ: cli_req})
+
+    def fetch_request(self, worker_name, cnt):
+        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
+        if fileName:
+            return fileName[0][1]
+        return None
 
     def set(self, key, arg):
         self.rds.set(key, arg)
