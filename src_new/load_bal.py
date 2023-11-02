@@ -39,7 +39,7 @@ class LoadBal:
                     rate_limiters[cur_server].add_request(req)
                     req_id += 1
 
-            cur_server = (cur_server + 1) % N_SERVERS
+                cur_server = (cur_server + 1) % N_SERVERS
 
     def run(self):
         self.app.run(host='0.0.0.0', port=REQUEST_PORT)
