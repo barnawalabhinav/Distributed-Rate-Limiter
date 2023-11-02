@@ -13,11 +13,13 @@ from process import Process
 class RLWorker(Process):
     def _process_req(self, cli_id: str, req_time: int, req_id: str, db: DataBase) -> Tuple[int, str]:
         if db.get_req_count(cli_id) >= REQ_LIMIT:
-            print(f"Rejecting Request from time {req_time} at time {int(time.time() + 0.5)}")
+            print(
+                f"Rejecting Request from time {req_time} at time {int(time.time() + 0.5)} from {cli_id}")
             return -1, "refuted"
 
         db.add_req(cli_id, req_time, req_id)
-        print(f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
+        print(
+            f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)} from {cli_id}")
         return -1, "accepted"
 
     def run(self, **kwargs: Any) -> None:
@@ -35,7 +37,8 @@ class RLWorker(Process):
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
                 cli_id, req_time, req_id = req.split("-")
-                rate, res = self._process_req(cli_id, int(req_time), req_id, database)
+                rate, res = self._process_req(
+                    cli_id, int(req_time), req_id, database)
                 result.append((cli_id, str(rate)))
                 result.append((req, res))
 
@@ -51,7 +54,8 @@ class RateLimiter:
         self.rl_workers = []
         for _ in range(N_WORKERS):
             self.rl_workers.append(RLWorker(cpu=cpu))
-            self.rl_workers[-1].create_and_run(api_server=api_server, database=db)
+            self.rl_workers[-1].create_and_run(
+                api_server=api_server, database=db)
 
     def kill(self) -> None:
         for worker in self.rl_workers:
@@ -61,7 +65,8 @@ class RateLimiter:
 # This is the redis client providing interface to interact with main rate limiters on api servers
 class ApiServer:
     def __init__(self, port: int, db: DataBase, cpu: Optional[Iterable[int]] = None):
-        self.rds = Redis(host='localhost', port=port, db=0, decode_responses=False)
+        self.rds = Redis(host='localhost', port=port,
+                         db=0, decode_responses=False)
         self.rds.flushall()
         self.rds.xgroup_create(LOAD, WRK_GRP, id="0", mkstream=True)
         self.rate_limiter = RateLimiter(self, cpu=cpu, db=db)
@@ -72,7 +77,8 @@ class ApiServer:
         self.rds.xadd(LOAD, {CLI_REQ: cli_req})
 
     def fetch_request(self, worker_name, cnt):
-        fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
+        fileName = self.rds.xreadgroup(
+            WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
         if fileName:
             return fileName[0][1]
         # pending_msgs = self.rds.xpending(LOAD, WRK_GRP)

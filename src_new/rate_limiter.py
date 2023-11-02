@@ -33,13 +33,14 @@ class RLRedis(BaseRedis):
 class RLWorker(Process):
     def _process_req(self, cli_id: str, req_time: int, req_id: str, db: BaseRedis) -> Tuple[int, str]:
         if db.get_req_count(cli_id) >= REQ_LIMIT:
+            # TODO: Send accept/reject to frontend
             print(
-                f"Rejecting Request from time {req_time} at time {int(time.time() + 0.5)}")
+                f"Client {cli_id}: Rejecting Request from time {req_time} at time {int(time.time() + 0.5)}")
             return -1, "refuted"
 
         db.add_req(cli_id, req_time, req_id)
         print(
-            f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
+            f"Client {cli_id}: Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
         return -1, "accepted"
 
     # Implement task of workers, fetch requests from api server's redis-stream and process
@@ -60,7 +61,7 @@ class RLWorker(Process):
                     cli_id, int(req_time), req_id, database)
                 result.append((cli_id, str(rate)))
                 result.append((req, res))
-            
+
             for (key, arg) in result:
                 database.set(key, arg)
 

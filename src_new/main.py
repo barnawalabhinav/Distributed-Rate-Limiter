@@ -70,6 +70,7 @@ def dist_rate_limiter():
         for i in range(N_CLIENTS):
             print(f'Creating client {i}')
             clients.append(Client())
+            # TODO: change according to different client rates
             clients[-1].create_and_run(gap=3000)
         load_bal.dist_request(rate_limiters)
 

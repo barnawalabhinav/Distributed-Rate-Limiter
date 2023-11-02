@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, List
 
 LOGFILE: Final[str] = "temp.log"
 DONE: Final[str] = "DONE"
@@ -16,7 +16,9 @@ WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 IDLE_TIME: Final[int] = 1000  # In milliseconds
 
-N_CLIENTS: Final[int] = 1
+N_CLIENTS: Final[int] = 5
+CLIENT_RATES: List[int] = [105, 77, 35, 0, 1, 1]
+
 N_WORKERS: Final[int] = 2
 
 PER_SERVER_REQ_CNT: Final[int] = 1
@@ -31,5 +33,6 @@ LB_PORT: Final[int] = 6501
 DB_IP: Final[str] = 'localhost'
 DB_PORT: Final[int] = 6000
 
+# TODO: Add COMMON_DB toggle in frontend
 COMMON_DB: Final[bool] = True
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
