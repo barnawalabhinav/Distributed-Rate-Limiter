@@ -13,13 +13,15 @@ from rate_limiter import RateLimiter
 
 rate_limiters = []
 clients = []
-
+forks = []
 
 def sig_handler(signum, frame):
     for client in clients:
         client.kill()
     for rl in rate_limiters:
         rl.kill()
+    for pid in forks:
+        os.kill(pid, signal.SIGKILL)
     logging.info('Stopped!')
     sys.exit()
 
@@ -50,8 +52,6 @@ def dist_rate_limiter():
             f"redis-cli -p {START_PORT + i} SHUTDOWN; redis-server --port {START_PORT + i} --daemonize yes --server_cpulist {i+2}-{i+2}")
     # os.system(f"bash configure.sh {N_SERVERS} {START_PORT}")
 
-    # TODO: Implement main file that stiches the processes and starts and ends the execution
-
     if COMMON_DB:
         os.system(f"bash configure_raft.sh {' '.join(RAFT_PORTS)}")
         time.sleep(1)
@@ -67,11 +67,28 @@ def dist_rate_limiter():
     if pid == 0:
         load_bal.run()
     else:
+        forks.append(pid)
         for i in range(N_CLIENTS):
             print(f'Creating client {i}')
             clients.append(Client())
-            clients[-1].create_and_run(gap=3000)
-        load_bal.dist_request(rate_limiters)
+            clients[-1].create_and_run(gap=500)
+        pid = os.fork()
+        if pid == 0:
+            while True:
+                # TODO: divyanka, for each client, no of reqs accepted in the past REQ_EXPIRY_TIME seconds
+                time.sleep(REQ_EXPIRY_TIME)
+                for client in clients:
+                    cli_id = client.pid
+                    if COMMON_DB:
+                        cnt = database.get_req_count(cli_id)
+                    else:
+                        cnt = 0
+                        for rl in rate_limiters:
+                            cnt += rl.rds.get_req_count(cli_id)
+                    print(f'Accepted {cnt} requests for client {cli_id} in past {REQ_EXPIRY_TIME} seconds')
+        else:
+            forks.append(pid)
+            load_bal.dist_request(rate_limiters)
 
 
 if __name__ == "__main__":
