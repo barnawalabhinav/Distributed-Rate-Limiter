@@ -4,7 +4,7 @@ import time
 
 from redis.client import Redis
 from base_redis import BaseRedis
-from constants import REQ_EXPIRY_TIME, COMMON_DB, RAFT_PORTS
+from constants import RAFT_PORTS
 
 
 # This is the redis client providing interface to interact with common redis database

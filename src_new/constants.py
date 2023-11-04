@@ -3,7 +3,7 @@ from typing import Final
 LOGFILE: Final[str] = "temp.log"
 
 # Number of API Servers; there are two additional redis-servers by default
-N_SERVERS: Final[int] = 3
+N_SERVERS: Final[int] = 2
 
 # Servers are ports on and after this consecutively. Two default servers are assigned ports consecutively preceeding this
 START_PORT: Final[int] = 7000
@@ -17,12 +17,12 @@ WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 IDLE_TIME: Final[int] = 1000  # In milliseconds
 
-N_CLIENTS: Final[int] = 20
+N_CLIENTS: Final[int] = 2
 N_WORKERS: Final[int] = 5
 
-PER_SERVER_REQ_CNT: Final[int] = 2
-REQ_LIMIT: Final[int] = 20
-REQ_EXPIRY_TIME: Final[int] = 2
+PER_SERVER_REQ_CNT: Final[int] = 1
+REQ_LIMIT: Final[int] = 2
+REQ_EXPIRY_TIME: Final[int] = 10
 
 # IPS = ["10.17.7.57", "10.17.7.208", "10.17.7.217"]
 # REQUEST_IP: Final[str] = '172.29.24.91'
@@ -36,5 +36,8 @@ CLIENT_PORT_BEG: Final = 9080
 DB_IP: Final[str] = 'localhost'
 DB_PORT: Final[int] = 6000
 
-COMMON_DB: Final[bool] = True
+COMMON_DB: Final[bool] = False
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
+
+CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 10
+TOTAL_CLIENT_REQUESTS: Final[int] = 50

@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 
 from redis.client import Redis
-from constants import REQ_EXPIRY_TIME, LOAD, WRK_GRP, CLI_REQ, N_CLIENTS, CLIENTS
+from constants import REQ_EXPIRY_TIME, LOAD, WRK_GRP, CLI_REQ, CLIENTS
 
 
 # This is the redis client providing interface to interact with common redis database

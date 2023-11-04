@@ -5,7 +5,6 @@ import sys
 import time
 from threading import current_thread
 
-from client import Client
 from constants import *
 from database import DataBase
 from rate_limiter import RateLimiter

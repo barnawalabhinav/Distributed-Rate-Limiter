@@ -2,19 +2,29 @@ import logging
 import os
 import time
 import socket
-import signal
-from typing import Any, Final
+from typing import Any, Dict, List
 
+import pandas as pd
 from flask import Flask, jsonify, request
 import requests
 
-from constants import REQUEST_IPS, REQUEST_PORTS
-from load_bal import LoadBal
+from constants import REQUEST_IPS, REQUEST_PORTS, CLIENT_ANALYSIS_WINDOW_LEN, TOTAL_CLIENT_REQUESTS
 from process import Process
 
 
 # This is the a client requesting accesses to the API, interacts with the load balancer
 class Client(Process):
+    def __init__(self):
+        super(Client, self).__init__()
+        self.start_time = time.time() * 1000
+
+        '''
+        self.data stores the results of requests in the given format
+        key: start_time-end_time
+        value: [accepted_count, rejected_count, latency, rtt]
+        '''
+        self.data: Dict[str, List[int, int, int, int]] = {}
+
     def _get_response(self):
         try:
             data = request.get_json()
@@ -28,11 +38,31 @@ class Client(Process):
                     <request id assigned by rate limiter>-
                     <rate limiters receipt timestamp>-
                     <rate limiters finish timstamp>-
+                    <rate limiter response send timestamp>-
                     <result (accepted/refuted)>
                 }
                 '''
 
                 # TODO: Perform analysis on the response
+                response_time = time.time() * 1000
+                _, sent_time, _, rl_recv_time, rl_end_time, rl_response_send_time, res = response_data.split('-')
+
+                rtt = (response_time - int(rl_response_send_time)) + (int(rl_recv_time) - int(sent_time))
+                processing_latency = int(rl_end_time) - int(rl_recv_time)
+
+                req_window_start = (sent_time // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN
+                req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN}'
+
+                if req_window in self.data:
+                    self.data[req_window][2] += processing_latency
+                    self.data[req_window][3] += rtt
+                else:
+                    self.data[req_window] = [0, 0, processing_latency, rtt]
+
+                if res == 'accepted':
+                    self.data[req_window][0] += 1
+                else:
+                    self.data[req_window][1] += 1
 
                 # print(f"response = {response_data}")
                 return jsonify({"message": "Response received successfully"})
@@ -60,7 +90,8 @@ class Client(Process):
         else:
             self.forks.append(pid)
             ser_id = 0
-            while True:
+            i = 0
+            while i < TOTAL_CLIENT_REQUESTS:
                 data = {
                     'request_data': (str(self.ip) + '_' + str(self.port) + '_' + str(self.pid) + "-" + str(int(time.time()*1000)))
                 }
@@ -77,8 +108,20 @@ class Client(Process):
                 if response != 200:
                     logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
                     logging.debug(f"Response content: {response.text}")
-                # else:
+                else:
+                    i += 1
                 #     logging.debug("Request successfully added to the queue")
                     
                 # loadBal.add_request(str(self.pid) + "-" + str(int(time.time() + 0.5)))
                 time.sleep(time_gap/1000)
+
+            df = pd.DataFrame(columns=['Window', 'Latency', 'RTT', 'Accepted', 'Rejected'], index=None)
+            for i, (key, value) in enumerate(self.data.items()):
+                accepted_count, rejected_count, latency, rtt = value
+                df.loc[i] = {'Window': key,
+                             'Latency': latency / (accepted_count + rejected_count),
+                             'RTT': rtt / (accepted_count + rejected_count),
+                             'Accepted': accepted_count,
+                             'Rejected': rejected_count}
+
+            df.to_csv(f'../data/Client_{self.pid}_data.csv', index=False)
