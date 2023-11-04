@@ -1,7 +1,6 @@
 from typing import Final
 
 LOGFILE: Final[str] = "temp.log"
-DONE: Final[str] = "DONE"
 
 # Number of API Servers; there are two additional redis-servers by default
 N_SERVERS: Final[int] = 3
@@ -10,24 +9,30 @@ N_SERVERS: Final[int] = 3
 START_PORT: Final[int] = 7000
 
 LOAD: Final[bytes] = b"LOAD"
+DONE: Final[bytes] = b"DONE"
+CLIENTS: Final[str] = "CLIENT_IDS"
 SER_GRP: Final[str] = "SERVER"
 CLI_GRP: Final[str] = "CLIENT"
 WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 IDLE_TIME: Final[int] = 1000  # In milliseconds
 
-N_CLIENTS: Final[int] = 1
-N_WORKERS: Final[int] = 2
+N_CLIENTS: Final[int] = 20
+N_WORKERS: Final[int] = 5
 
-PER_SERVER_REQ_CNT: Final[int] = 1
-REQ_LIMIT: Final[int] = 1
-REQ_EXPIRY_TIME: Final[int] = 10
+PER_SERVER_REQ_CNT: Final[int] = 2
+REQ_LIMIT: Final[int] = 20
+REQ_EXPIRY_TIME: Final[int] = 2
 
-IPS = ["10.17.7.57", "10.17.7.208", "10.17.7.217"]
-REQUEST_IP: Final[str] = 'localhost'
-REQUEST_PORT: Final[int] = 8080
-LB_IP: Final[str] = 'localhost'
-LB_PORT: Final[int] = 6501
+# IPS = ["10.17.7.57", "10.17.7.208", "10.17.7.217"]
+# REQUEST_IP: Final[str] = '172.29.24.91'
+# REQUEST_IPS: Final = ['172.29.24.91', '172.29.24.91', '172.29.24.91']
+REQUEST_IPS: Final = ['localhost', 'localhost', 'localhost']
+REQUEST_PORTS: Final = [8080, 8081, 8082]
+CLIENT_PORT_BEG: Final = 9080
+
+# LB_IP: Final[str] = 'localhost'
+# LB_PORT: Final[int] = 6501
 DB_IP: Final[str] = 'localhost'
 DB_PORT: Final[int] = 6000
 

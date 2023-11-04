@@ -5,7 +5,7 @@ from typing import Final, List
 from flask import Flask, jsonify, request
 from redis.client import Redis
 
-from constants import LOAD, N_SERVERS, PER_SERVER_REQ_CNT, REQUEST_PORT
+from constants import LOAD, N_SERVERS, PER_SERVER_REQ_CNT, REQUEST_PORTS
 from rate_limiter import RateLimiter
 
 
@@ -22,6 +22,7 @@ class LoadBal:
             if 'request_data' in data:
                 request_data = data['request_data']
                 self.rds.rpush(LOAD, request_data)
+                print(f"request = {request_data}")
                 return jsonify({"message": "Request added to Redis queue successfully"})
             else:
                 return jsonify({"error": "Missing 'request_data' in the request body"}), 400
