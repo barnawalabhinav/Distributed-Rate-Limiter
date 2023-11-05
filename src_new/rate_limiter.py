@@ -25,7 +25,7 @@ class RLRedis(BaseRedis):
         self.rds.rpush(DONE, msg)
 
     def fetch_responses_from_queue(self):
-        return self.rds.lrange(DONE, 0, -1)
+        return self.rds.lpop(DONE, 10000)
 
     def add_request(self, cli_req: str):
         super(RLRedis, self).add_request(cli_req)

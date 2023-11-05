@@ -2,7 +2,7 @@ import logging
 import os
 import time
 import socket
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Final
 
 import pandas as pd
 from flask import Flask, jsonify, request
@@ -16,12 +16,12 @@ from process import Process
 class Client(Process):
     def __init__(self):
         super(Client, self).__init__()
-        self.start_time = int(time.time() * 1000)
+        self.start_time: Final[int] = int(time.time())
 
         '''
         self.data stores the results of requests in the given format
         key: start_time-end_time
-        value: [accepted_count, rejected_count, latency, rtt]
+        value: [accepted_count, rejected_count, cum_latency, cum_rtt]
         '''
         self.data: Dict[str, List[int, int, int, int]] = {}
 
@@ -30,7 +30,7 @@ class Client(Process):
             data = request.get_json()
             if 'response_data' in data:
                 response_data = data['response_data']
-                
+
                 '''
                 response_data = {
                     <self.pid>-
@@ -47,27 +47,14 @@ class Client(Process):
                 response_time = int(time.time() * 1000)
                 _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_send_time = response_data.split('-')
 
-                # print("--------------------------")
-
-                # print(response_time)
-                # print(rl_response_send_time)
-                # print(rl_recv_time)
-                # print(sent_time)
-
-                # print("--------------------------")
-
                 rtt = (response_time - int(rl_response_send_time)) + (int(rl_recv_time) - int(sent_time))
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
 
-                # print(self.start_time)
+                req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) \
+                                   * CLIENT_ANALYSIS_WINDOW_LEN
+                req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN - 1}'
 
-                req_window_start = (sent_time // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN
-
-                print(req_window_start)
-
-                req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN}'
-
-                print("3")
+                print(f'{req_window}:[{res}, {processing_latency}, {rtt}]')
 
                 if req_window in self.data:
                     self.data[req_window][2] += processing_latency
@@ -75,14 +62,12 @@ class Client(Process):
                 else:
                     self.data[req_window] = [0, 0, processing_latency, rtt]
 
-                print("4")
-
                 if res == 'accepted':
                     self.data[req_window][0] += 1
                 else:
                     self.data[req_window][1] += 1
 
-                print(f"response = {response_data}")
+                # print(f"response = {response_data}")
                 return jsonify({"message": "Response received successfully"})
             else:
                 return jsonify({"error": "Missing 'response_data' in the request body"}), 400
@@ -122,24 +107,39 @@ class Client(Process):
                     # time.sleep(time_gap/1000)
                     continue
 
+                i += 1
+                print(i)
+
                 # Check the response
                 if response != 200:
                     logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
                     logging.debug(f"Response content: {response.text}")
-                else:
-                    i += 1
+                # else:
                 #     logging.debug("Request successfully added to the queue")
-                    
+
                 # loadBal.add_request(str(self.pid) + "-" + str(int(time.time() + 0.5)))
-                time.sleep(time_gap/1000)
+                time.sleep(time_gap / 1000)
 
-            df = pd.DataFrame(columns=['Window', 'Latency', 'RTT', 'Accepted', 'Rejected'], index=None)
-            for i, (key, value) in enumerate(self.data.items()):
-                accepted_count, rejected_count, latency, rtt = value
-                df.loc[i] = {'Window': key,
-                             'Latency': latency / (accepted_count + rejected_count),
-                             'RTT': rtt / (accepted_count + rejected_count),
-                             'Accepted': accepted_count,
-                             'Rejected': rejected_count}
+            # print(f'Waiting 10 seconds before outputting data in csv file')
+            # time.sleep(10)
+            #
+            # print(self.data)
+            #
+            # df = pd.DataFrame(columns=['Window', 'Latency', 'RTT', 'Accepted', 'Rejected'], index=None)
+            # for i, (key, value) in enumerate(self.data.items()):
+            #     accepted_count, rejected_count, latency, rtt = value
+            #     df.loc[i] = {'Window': key,
+            #                  'Latency': latency / (accepted_count + rejected_count),
+            #                  'RTT': rtt / (accepted_count + rejected_count),
+            #                  'Accepted': accepted_count,
+            #                  'Rejected': rejected_count}
+            #
+            # df.to_csv(f'../data/Client_{self.pid}_data.csv', index=False)
+            #
+            # print('Data written to csv')
 
-            df.to_csv(f'../data/Client_{self.pid}_data.csv', index=False)
+            while True:
+                try:
+                    _, _ = os.wait()
+                except:
+                    break
