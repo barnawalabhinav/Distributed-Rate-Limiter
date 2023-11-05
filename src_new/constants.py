@@ -17,8 +17,8 @@ WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 IDLE_TIME: Final[int] = 1000  # In milliseconds
 
-N_CLIENTS: Final[int] = 2
-CLIENT_RATES: Final[List[int]] = [1, 1]  # per second
+N_CLIENTS: Final[int] = 32
+CLIENT_RATES: Final[List[int]] = [10] * N_CLIENTS # per second
 N_WORKERS: Final[int] = 4
 
 PER_SERVER_REQ_CNT: Final[int] = 2
@@ -42,5 +42,5 @@ FRONTEND_PORT: Final[int] = 5000
 COMMON_DB: Final[bool] = False
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
 
-CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 10
-TOTAL_CLIENT_REQUESTS: Final[int] = 20
+CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 100
+TOTAL_CLIENT_REQUESTS: Final[int] = 200
