@@ -102,15 +102,14 @@ class Client(Process):
                     # time.sleep(time_gap/1000)
                     continue
 
-                i += 1
-
                 # Check the response
                 if response != 200:
-                    logging.debug(
-                        f"Failed to add request to the queue. Status code: {response.status_code}")
+                    logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
                     logging.debug(f"Response content: {response.text}")
-                # else:
-                #     logging.debug("Request successfully added to the queue")
+                    continue
+
+                i += 1
+                # logging.debug("Request successfully added to the queue")
 
                 # loadBal.add_request(str(self.pid) + "-" + str(int(time.time() + 0.5)))
                 time.sleep(time_gap / 1000)
