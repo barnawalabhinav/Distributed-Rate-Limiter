@@ -114,20 +114,20 @@ class RateLimiter:
                     data = {
                         'response_data': msg
                     }
-                    while True:
-                        try:
-                            response = requests.post(flask_url, json=data)
-                        except:
-                            logging.debug("Failed to send response")
-                            continue
+                    # while True:
+                    try:
+                        response = requests.post(flask_url, json=data)
+                    except:
+                        logging.debug("Failed to send response")
+                        continue
 
-                        # Check the response
-                        if response.status_code != 200:
-                            logging.debug(
-                                f"Failed to respond to client. Status code: {response.status_code}")
-                            logging.debug(f"Response content: {response.text}")
-                        else:
-                            break
+                    # Check the response
+                    if response.status_code != 200:
+                        logging.debug(
+                            f"Failed to respond to client. Status code: {response.status_code}")
+                        logging.debug(f"Response content: {response.text}")
+                    # else:
+                    #     break
 
     def listen(self):
         pid = os.fork()
