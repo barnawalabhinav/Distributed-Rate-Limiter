@@ -78,7 +78,9 @@ class Client(Process):
 
     def run(self, **kwargs: Any) -> None:
         self.flask_urls = []
-        self.ip = socket.gethostbyname(socket.gethostname())
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        self.ip = s.getsockname()[0]
         self.port = kwargs['port']
         for i in range(len(REQUEST_PORTS)):
             self.flask_urls.append(
