@@ -43,4 +43,5 @@ COMMON_DB: Final[bool] = True
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
 
 CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 100
-TOTAL_CLIENT_REQUESTS: Final[int] = 200
+RUNTIME: Final[int] = 20
+TOTAL_CLIENT_REQUESTS: Final[List[int]] = [RUNTIME * rate for rate in CLIENT_RATES]

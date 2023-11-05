@@ -87,7 +87,7 @@ class Client(Process):
             self.forks.append(pid)
             ser_id = 0
             i = 0
-            while i < TOTAL_CLIENT_REQUESTS:
+            while i < TOTAL_CLIENT_REQUESTS[self.id]:
                 data = {
                     'request_data': (str(self.ip) + '_' + str(self.port) + '_' + str(self.pid) + "-" + str(
                         int(time.time() * 1000)))
@@ -108,6 +108,7 @@ class Client(Process):
                     logging.debug(f"Response content: {response.text}")
 
                 i += 1
+                # print(i)
                 # logging.debug("Request successfully added to the queue")
 
                 # loadBal.add_request(str(self.pid) + "-" + str(int(time.time() + 0.5)))
