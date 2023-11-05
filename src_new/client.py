@@ -106,7 +106,6 @@ class Client(Process):
                 if response != 200:
                     logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
                     logging.debug(f"Response content: {response.text}")
-                    continue
 
                 i += 1
                 # logging.debug("Request successfully added to the queue")
