@@ -39,7 +39,7 @@ DB_PORT: Final[int] = 6000
 
 FRONTEND_PORT: Final[int] = 5000
 
-COMMON_DB: Final[bool] = True
+COMMON_DB: Final[bool] = False
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
 
 CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 10

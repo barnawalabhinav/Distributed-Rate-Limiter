@@ -7,6 +7,7 @@ from threading import current_thread
 
 from constants import *
 from database import DataBase
+from base_redis import BaseRedis
 from rate_limiter import RateLimiter
 
 rate_limiters = []
@@ -45,10 +46,11 @@ def dist_rate_limiter():
     # os.system(
     #     f"redis-cli -p {LB_PORT} SHUTDOWN; redis-server --port {LB_PORT} --daemonize yes --server_cpulist 0-0")
     os.system(
-        f"redis-cli -p {DB_PORT} SHUTDOWN; redis-server --port {DB_PORT} --daemonize yes --server_cpulist 1-1")
+        f"redis-cli -p {DB_PORT} SHUTDOWN; redis-server --port {DB_PORT} --daemonize yes --server_cpulist 0-0")
     for i in range(N_SERVERS):
-        os.system(
-            f"redis-cli -p {START_PORT + i} SHUTDOWN; redis-server --port {START_PORT + i} --daemonize yes --server_cpulist {i+2}-{i+2}")
+        os.system(f"redis-cli -p {START_PORT + i} SHUTDOWN; redis-server --port {START_PORT + i} --daemonize yes --server_cpulist {i+1}-{i+1}")
+        if not COMMON_DB:
+            os.system(f"redis-cli -p {START_PORT + N_SERVERS + i} SHUTDOWN; redis-server --port {START_PORT + N_SERVERS + i} --daemonize yes --server_cpulist {i+1}-{i+1}")
     # os.system(f"bash configure.sh {N_SERVERS} {START_PORT}")
 
     if COMMON_DB:
@@ -56,10 +58,13 @@ def dist_rate_limiter():
         time.sleep(1)
 
     # load_bal = LoadBal(LB_PORT)
-    database = DataBase(DB_PORT) if COMMON_DB else None
+    common_database = DataBase(DB_PORT) if COMMON_DB else None
 
     idx = 0
     for ser_id in range(N_SERVERS):
+        database = common_database
+        if not common_database:
+            database = BaseRedis(START_PORT + N_SERVERS + ser_id)
         rate_limiters.append(RateLimiter(port=START_PORT + ser_id,
                              listen_port=REQUEST_PORTS[idx], cpu=[ser_id + 2], db=database))
         idx += 1
