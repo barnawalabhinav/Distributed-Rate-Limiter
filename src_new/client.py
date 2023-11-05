@@ -8,7 +8,7 @@ import pandas as pd
 from flask import Flask, jsonify, request
 import requests
 
-from constants import REQUEST_IP, REQUEST_PORTS, CLIENT_ANALYSIS_WINDOW_LEN, TOTAL_CLIENT_REQUESTS
+from constants import REQUEST_IP, REQUEST_PORTS, CLIENT_ANALYSIS_WINDOW_LEN, TOTAL_CLIENT_REQUESTS, COMMON_DB
 from process import Process
 
 
@@ -18,16 +18,19 @@ class Client(Process):
         super(Client, self).__init__()
         self.start_time: Final[int] = int(time.time())
         self.id: Final[int] = kwargs['id']
-        '''
-        self.data stores the results of requests in the given format
-        key: start_time-end_time
-        value: [accepted_count, rejected_count, cum_latency, cum_rtt]
-        '''
-        self.data: Dict[str, List[int, int, int, int]] = {}
+        self.filename = None
+        if COMMON_DB:
+            self.filename = f'../data/client_{self.id}_common_db.csv'
+        else:
+            self.filename = f'../data/client_{self.id}.csv'
+
+        # clear the contents of the output file
+        open(self.filename, 'w').close()
 
     def _get_response(self):
         try:
             data = request.get_json()
+            response_time = int(time.time() * 1000)
             if 'response_data' in data:
                 response_data = data['response_data']
 
@@ -38,36 +41,22 @@ class Client(Process):
                     <request id assigned by rate limiter>-
                     <rate limiters receipt timestamp>-
                     <rate limiters finish timstamp>-
-                    <result (accepted/refuted)>-
-                    <rate limiter response send timestamp>
+                    <result (accepted/refuted)>
                 }
                 '''
 
                 # TODO: Perform analysis on the response
-                response_time = int(time.time() * 1000)
-                _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_send_time = response_data.split(
-                    '-')
+                _, sent_time, _, rl_recv_time, rl_end_time, res = response_data.split('-')
 
-                rtt = (response_time - int(rl_response_send_time)) + \
-                    (int(rl_recv_time) - int(sent_time))
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
+                rtt = response_time - int(sent_time) - processing_latency
 
-                req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) \
-                    * CLIENT_ANALYSIS_WINDOW_LEN
+                req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) * \
+                                   CLIENT_ANALYSIS_WINDOW_LEN
                 req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN - 1}'
 
-                print(f'{req_window}:[{res}, {processing_latency}, {rtt}]')
-
-                if req_window in self.data:
-                    self.data[req_window][2] += processing_latency
-                    self.data[req_window][3] += rtt
-                else:
-                    self.data[req_window] = [0, 0, processing_latency, rtt]
-
-                if res == 'accepted':
-                    self.data[req_window][0] += 1
-                else:
-                    self.data[req_window][1] += 1
+                with open(self.filename, 'a') as file:
+                    print(f'{req_window}:{res}-{processing_latency}-{rtt}', file=file)
 
                 # print(f"response = {response_data}")
                 return jsonify({"message": "Response received successfully"})
@@ -100,7 +89,8 @@ class Client(Process):
             i = 0
             while i < TOTAL_CLIENT_REQUESTS:
                 data = {
-                    'request_data': (str(self.ip) + '_' + str(self.port) + '_' + str(self.pid) + "-" + str(int(time.time()*1000)))
+                    'request_data': (str(self.ip) + '_' + str(self.port) + '_' + str(self.pid) + "-" + str(
+                        int(time.time() * 1000)))
                 }
                 try:
                     # Send a POST request to the Flask app
@@ -113,7 +103,6 @@ class Client(Process):
                     continue
 
                 i += 1
-                print(i)
 
                 # Check the response
                 if response != 200:
@@ -143,6 +132,8 @@ class Client(Process):
             # df.to_csv(f'../data/Client_{self.pid}_data.csv', index=False)
             #
             # print('Data written to csv')
+
+            print(f'Client {self.id} is done!!')
 
             while True:
                 try:

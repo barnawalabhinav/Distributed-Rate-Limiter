@@ -87,7 +87,7 @@ class RateLimiter:
             data = request.get_json()
             if 'request_data' in data:
                 request_data = data['request_data']
-                req = request_data + '-' + str(self.req_id) + '-' + str(int(time.time()*1000))
+                req = request_data + '-' + str(self.req_id) + '-' + str(int(time.time() * 1000))
                 self.rds.add_request(req)
                 self.req_id += 1
                 # print(f"request = {request_data}")
@@ -109,7 +109,7 @@ class RateLimiter:
                     ip, port, msg = msg.split('_')
                     flask_url = f'http://{ip}:{int(port)}/add_response'
                     data = {
-                        'response_data': f'{msg}-{int(time.time() * 1000)}'
+                        'response_data': msg
                     }
                     # while True:
                     try:

@@ -26,7 +26,7 @@ REQ_LIMIT: Final[int] = 2
 REQ_EXPIRY_TIME: Final[int] = 10
 
 # IPS = ["10.17.7.57", "10.17.7.208", "10.17.7.217"]
-REQUEST_IP: Final[str] = '192.168.119.175'
+REQUEST_IP: Final[str] = 'localhost'
 # REQUEST_IPS: Final = ['172.29.24.91', '172.29.24.91', '172.29.24.91']
 # REQUEST_IPS: Final = ['localhost', 'localhost', 'localhost']
 REQUEST_PORTS: Final = [8080, 8081, 8082]
