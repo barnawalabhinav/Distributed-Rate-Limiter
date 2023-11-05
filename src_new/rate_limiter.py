@@ -126,8 +126,8 @@ class RateLimiter:
                             logging.debug(
                                 f"Failed to respond to client. Status code: {response.status_code}")
                             logging.debug(f"Response content: {response.text}")
-                        # else:
-                        #     break
+                        else:
+                            break
 
     def listen(self):
         pid = os.fork()
