@@ -18,7 +18,7 @@ redis-cli -a pass SHUTDOWN
 for arg in "$@";
 do
     redis-cli -p $arg SHUTDOWN
-    redis-server --port $arg --daemonize yes --dbfilename raft$arg.rdb --loadmodule /home/abhinav/redisraft/redisraft.so --raft.log-filename raftlog$arg.db --raft.addr localhost:$arg
+    redis-server --port $arg --daemonize yes --server_cpulist 0-0 --dbfilename raft$arg.rdb --loadmodule /home/abhinav/redisraft/redisraft.so --raft.log-filename raftlog$arg.db --raft.addr localhost:$arg
 done
 
 redis-cli -p $1 raft.cluster init;
