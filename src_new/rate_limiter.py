@@ -112,7 +112,7 @@ class RateLimiter:
                     ip, port, msg = msg.split('_')
                     flask_url = f'http://{ip}:{int(port)}/add_response'
                     data = {
-                        'response_data': msg
+                        'response_data': f'{msg}-{int(time.time() * 1000)}'
                     }
                     # while True:
                     try:

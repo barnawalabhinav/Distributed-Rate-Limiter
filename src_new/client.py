@@ -41,15 +41,15 @@ class Client(Process):
                     <request id assigned by rate limiter>-
                     <rate limiters receipt timestamp>-
                     <rate limiters finish timstamp>-
-                    <result (accepted/refuted)>
+                    <result (accepted/refuted)>-
+                    <rate limiter response time>
                 }
                 '''
 
                 # TODO: Perform analysis on the response
-                _, sent_time, _, rl_recv_time, rl_end_time, res = response_data.split('-')
-
+                _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_time = response_data.split('-')
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
-                rtt = response_time - int(sent_time) - processing_latency
+                rtt = (response_time - int(rl_response_time)) + (int(rl_recv_time) - int(sent_time))
 
                 req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) * \
                                    CLIENT_ANALYSIS_WINDOW_LEN
