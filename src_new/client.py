@@ -8,7 +8,7 @@ import pandas as pd
 from flask import Flask, jsonify, request
 import requests
 
-from constants import REQUEST_IPS, REQUEST_PORTS, CLIENT_ANALYSIS_WINDOW_LEN, TOTAL_CLIENT_REQUESTS
+from constants import REQUEST_IP, REQUEST_PORTS, CLIENT_ANALYSIS_WINDOW_LEN, TOTAL_CLIENT_REQUESTS
 from process import Process
 
 
@@ -16,7 +16,7 @@ from process import Process
 class Client(Process):
     def __init__(self):
         super(Client, self).__init__()
-        self.start_time = time.time() * 1000
+        self.start_time = int(time.time() * 1000)
 
         '''
         self.data stores the results of requests in the given format
@@ -38,20 +38,36 @@ class Client(Process):
                     <request id assigned by rate limiter>-
                     <rate limiters receipt timestamp>-
                     <rate limiters finish timstamp>-
-                    <rate limiter response send timestamp>-
-                    <result (accepted/refuted)>
+                    <result (accepted/refuted)>-
+                    <rate limiter response send timestamp>
                 }
                 '''
 
                 # TODO: Perform analysis on the response
-                response_time = time.time() * 1000
-                _, sent_time, _, rl_recv_time, rl_end_time, rl_response_send_time, res = response_data.split('-')
+                response_time = int(time.time() * 1000)
+                _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_send_time = response_data.split('-')
+
+                # print("--------------------------")
+
+                # print(response_time)
+                # print(rl_response_send_time)
+                # print(rl_recv_time)
+                # print(sent_time)
+
+                # print("--------------------------")
 
                 rtt = (response_time - int(rl_response_send_time)) + (int(rl_recv_time) - int(sent_time))
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
 
+                # print(self.start_time)
+
                 req_window_start = (sent_time // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN
+
+                print(req_window_start)
+
                 req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN}'
+
+                print("3")
 
                 if req_window in self.data:
                     self.data[req_window][2] += processing_latency
@@ -59,12 +75,14 @@ class Client(Process):
                 else:
                     self.data[req_window] = [0, 0, processing_latency, rtt]
 
+                print("4")
+
                 if res == 'accepted':
                     self.data[req_window][0] += 1
                 else:
                     self.data[req_window][1] += 1
 
-                # print(f"response = {response_data}")
+                print(f"response = {response_data}")
                 return jsonify({"message": "Response received successfully"})
             else:
                 return jsonify({"error": "Missing 'response_data' in the request body"}), 400
@@ -75,9 +93,9 @@ class Client(Process):
         self.flask_urls = []
         self.ip = socket.gethostbyname(socket.gethostname())
         self.port = kwargs['port']
-        for i in range(len(REQUEST_IPS)):
+        for i in range(len(REQUEST_PORTS)):
             self.flask_urls.append(
-                f"http://{REQUEST_IPS[i]}:{REQUEST_PORTS[i]}/add_request_to_queue")
+                f"http://{REQUEST_IP}:{REQUEST_PORTS[i]}/add_request_to_queue")
 
         # Number of milliseconds to wait before sending the next request
         time_gap: int = kwargs['gap']

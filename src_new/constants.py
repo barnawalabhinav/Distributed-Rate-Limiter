@@ -3,7 +3,7 @@ from typing import Final
 LOGFILE: Final[str] = "temp.log"
 
 # Number of API Servers; there are two additional redis-servers by default
-N_SERVERS: Final[int] = 2
+N_SERVERS: Final[int] = 3
 
 # Servers are ports on and after this consecutively. Two default servers are assigned ports consecutively preceeding this
 START_PORT: Final[int] = 7000
@@ -25,9 +25,9 @@ REQ_LIMIT: Final[int] = 2
 REQ_EXPIRY_TIME: Final[int] = 10
 
 # IPS = ["10.17.7.57", "10.17.7.208", "10.17.7.217"]
-# REQUEST_IP: Final[str] = '172.29.24.91'
+REQUEST_IP: Final[str] = '172.29.24.91'
 # REQUEST_IPS: Final = ['172.29.24.91', '172.29.24.91', '172.29.24.91']
-REQUEST_IPS: Final = ['localhost', 'localhost', 'localhost']
+# REQUEST_IPS: Final = ['localhost', 'localhost', 'localhost']
 REQUEST_PORTS: Final = [8080, 8081, 8082]
 CLIENT_PORT_BEG: Final = 9080
 
