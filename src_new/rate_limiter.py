@@ -10,7 +10,7 @@ from flask import Flask, jsonify, request
 import requests
 from redis.client import Redis
 
-from constants import CLI_REQ, N_WORKERS, REQ_LIMIT, DONE
+from constants import CLI_REQ, N_WORKERS, REQ_LIMIT, DONE, PER_SERVER_REQ_CNT
 from base_redis import BaseRedis
 from process import Process
 
@@ -50,7 +50,7 @@ class RLWorker(Process):
         database: BaseRedis = kwargs['database'] if kwargs['database'] is not None else rl_redis
 
         while True:
-            reqs = rl_redis.fetch_request(self.name, cnt=2)
+            reqs = rl_redis.fetch_request(self.name, cnt=PER_SERVER_REQ_CNT)
             if not reqs:
                 time.sleep(1)
                 continue
@@ -58,11 +58,12 @@ class RLWorker(Process):
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
                 cli_id, _, req_id, req_time = req.split("-")
-                res = self._process_req(cli_id, int(req_time), req_id, database)
+                res = self._process_req(
+                    cli_id, int(req_time), req_id, database)
                 rl_redis.add_to_response_queue(req, res)
                 # result.append((cli_id, str(rate)))
                 # result.append((req, res))
-            
+
             # for (key, arg) in result:
             #     database.set(key, arg)
 
@@ -79,7 +80,8 @@ class RateLimiter:
 
         self.req_id = 0
         self.app: Final = Flask(__name__)
-        self.app.route('/add_request_to_queue', methods=['POST'])(self.add_request)
+        self.app.route('/add_request_to_queue',
+                       methods=['POST'])(self.add_request)
         self.forks = [self.listen(), self.send_responses()]
 
     def add_request(self):
@@ -87,7 +89,8 @@ class RateLimiter:
             data = request.get_json()
             if 'request_data' in data:
                 request_data = data['request_data']
-                req = request_data + '-' + str(self.req_id) + '-' + str(int(time.time() * 1000))
+                req = request_data + '-' + \
+                    str(self.req_id) + '-' + str(int(time.time() * 1000))
                 self.rds.add_request(req)
                 self.req_id += 1
                 # print(f"request = {request_data}")
@@ -120,7 +123,8 @@ class RateLimiter:
 
                     # Check the response
                     if response.status_code != 200:
-                        logging.debug(f"Failed to respond to client. Status code: {response.status_code}")
+                        logging.debug(
+                            f"Failed to respond to client. Status code: {response.status_code}")
                         logging.debug(f"Response content: {response.text}")
                     # else:
                     #     break
