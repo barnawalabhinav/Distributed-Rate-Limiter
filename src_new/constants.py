@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, List
 
 LOGFILE: Final[str] = "temp.log"
 
@@ -18,6 +18,7 @@ CLI_REQ: Final[bytes] = b"REQUEST"
 IDLE_TIME: Final[int] = 1000  # In milliseconds
 
 N_CLIENTS: Final[int] = 2
+CLIENT_RATES: Final[List[int]] = [1, 1]  # per second
 N_WORKERS: Final[int] = 5
 
 PER_SERVER_REQ_CNT: Final[int] = 1
@@ -35,6 +36,8 @@ CLIENT_PORT_BEG: Final = 9080
 # LB_PORT: Final[int] = 6501
 DB_IP: Final[str] = 'localhost'
 DB_PORT: Final[int] = 6000
+
+FRONTEND_PORT: Final[int] = 5000
 
 COMMON_DB: Final[bool] = True
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]

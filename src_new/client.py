@@ -14,10 +14,10 @@ from process import Process
 
 # This is the a client requesting accesses to the API, interacts with the load balancer
 class Client(Process):
-    def __init__(self):
+    def __init__(self, **kwargs: Any):
         super(Client, self).__init__()
         self.start_time: Final[int] = int(time.time())
-
+        self.id: Final[int] = kwargs['id']
         '''
         self.data stores the results of requests in the given format
         key: start_time-end_time
@@ -45,13 +45,15 @@ class Client(Process):
 
                 # TODO: Perform analysis on the response
                 response_time = int(time.time() * 1000)
-                _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_send_time = response_data.split('-')
+                _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_send_time = response_data.split(
+                    '-')
 
-                rtt = (response_time - int(rl_response_send_time)) + (int(rl_recv_time) - int(sent_time))
+                rtt = (response_time - int(rl_response_send_time)) + \
+                    (int(rl_recv_time) - int(sent_time))
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
 
                 req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) \
-                                   * CLIENT_ANALYSIS_WINDOW_LEN
+                    * CLIENT_ANALYSIS_WINDOW_LEN
                 req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN - 1}'
 
                 print(f'{req_window}:[{res}, {processing_latency}, {rtt}]')
@@ -76,7 +78,11 @@ class Client(Process):
 
     def run(self, **kwargs: Any) -> None:
         self.flask_urls = []
-        self.ip = socket.gethostbyname(socket.gethostname())
+        # self.ip = socket.gethostbyname(socket.gethostname())
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        self.ip = s.getsockname()[0]
+
         self.port = kwargs['port']
         for i in range(len(REQUEST_PORTS)):
             self.flask_urls.append(
@@ -100,7 +106,8 @@ class Client(Process):
                 }
                 try:
                     # Send a POST request to the Flask app
-                    response = requests.post(self.flask_urls[ser_id], json=data)
+                    response = requests.post(
+                        self.flask_urls[ser_id], json=data)
                     ser_id = (ser_id + 1) % len(self.flask_urls)
                 except:
                     logging.debug("Failed to add request to the queue")
@@ -112,7 +119,8 @@ class Client(Process):
 
                 # Check the response
                 if response != 200:
-                    logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
+                    logging.debug(
+                        f"Failed to add request to the queue. Status code: {response.status_code}")
                     logging.debug(f"Response content: {response.text}")
                 # else:
                 #     logging.debug("Request successfully added to the queue")

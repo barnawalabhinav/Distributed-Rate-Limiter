@@ -4,7 +4,7 @@ import sys
 import os
 
 from client import Client
-from constants import N_CLIENTS, CLIENT_PORT_BEG, LOGFILE
+from constants import N_CLIENTS, CLIENT_PORT_BEG, LOGFILE, CLIENT_RATES
 
 
 def sig_handler(signum, frame):
@@ -27,8 +27,10 @@ if __name__ == '__main__':
     clients = []
     for i in range(N_CLIENTS):
         print(f'Creating client {i}')
-        clients.append(Client())
-        clients[-1].create_and_run(port=CLIENT_PORT_BEG + i, gap=1000)
+        clients.append(Client(id))
+        rate = CLIENT_RATES[i]
+        time_gap = 1000 // rate
+        clients[-1].create_and_run(port=CLIENT_PORT_BEG + i, gap=time_gap)
 
     while True:
         try:
