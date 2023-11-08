@@ -6,10 +6,8 @@ declare -i port
 
 for off in $(seq 0 $n_servers)
 do
-    port=start_port+off-2
+    port=$start_port+$off-2
     echo $port
-    if [ $port -gt 0 ]; then
-        redis-cli -p $port SHUTDOWN
-    fi
+    redis-cli -p $port SHUTDOWN
     redis-server --port $port --daemonize yes --server_cpulist $off-$off
 done

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import os
-import sys
-import signal
 import logging
-import psutil
-from typing import Any
-from abc import abstractmethod, ABC
+import os
+import signal
+import sys
+from abc import ABC, abstractmethod
 from threading import current_thread
+from typing import Any
 
 
 # Creation of a new process; this class inherited by both workers and clients
@@ -16,6 +15,7 @@ class Process(ABC):
         self.name = "worker-?"
         self.pid = -1
         self.cpu = kwargs['cpu'] if 'cpu' in kwargs else None
+        self.forks = []
         # self.crash = kwargs['crash'] if 'crash' in kwargs else False
         # self.slow = kwargs['slow'] if 'slow' in kwargs else False
         # self.cpulimit = kwargs['limit'] if 'slow' in kwargs and 'limit' in kwargs else 100
@@ -47,4 +47,6 @@ class Process(ABC):
 
     def kill(self) -> None:
         logging.info(f"Killing {self.name}")
+        for pid in self.forks:
+            os.kill(pid, signal.SIGKILL)
         os.kill(self.pid, signal.SIGKILL)
