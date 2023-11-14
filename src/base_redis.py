@@ -20,9 +20,9 @@ class BaseRedis:
 
     def add_request(self, cli_req: str):
         self.rds.xadd(LOAD, {CLI_REQ: cli_req})
-        cli_id = cli_req.split('-')[0]
-        if len(self.rds.keys(f"{CLIENTS}:{cli_id}")) == 0:
-            self.rds.set(f'{CLIENTS}:{cli_id}', 1)
+        # cli_id = cli_req.split('-')[0]
+        # if len(self.rds.keys(f"{CLIENTS}:{cli_id}")) == 0:
+        #     self.rds.set(f'{CLIENTS}:{cli_id}', 1)
 
     def fetch_request(self, worker_name, cnt):
         fileName = self.rds.xreadgroup(WRK_GRP, worker_name, {LOAD: ">"}, count=cnt, noack=True)
@@ -40,7 +40,8 @@ class BaseRedis:
         return len(self.rds.keys(f'{cli_id}:Processed:*'))
 
     def add_req(self, cli_id: str, req_time: int, req_id: str) -> None:
-        time_to_expiry = REQ_EXPIRY_TIME - int(time.time()) + req_time//1000
+        time_to_expiry = REQ_EXPIRY_TIME*1000 - int(time.time()*1000) + req_time
+        # time_to_expiry = REQ_EXPIRY_TIME*1000 + req_time
         if time_to_expiry > 0:
             self.rds.set(f'{cli_id}:Processed:{req_time}:{req_id}', 1)
-            self.rds.expire(f'{cli_id}:Processed:{req_time}:{req_id}', time_to_expiry)
+            self.rds.pexpire(f'{cli_id}:Processed:{req_time}:{req_id}', time_to_expiry)

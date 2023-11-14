@@ -27,6 +27,11 @@ class Client(Process):
         # clear the contents of the output file
         open(self.filename, 'w').close()
 
+        self.avg_rtt = 0
+        self.accept_rate = 0
+        self.avg_proc_lat = 0
+        self.cnt_responses = 0
+
     def _get_response(self):
         try:
             data = request.get_json()
@@ -49,14 +54,26 @@ class Client(Process):
                 # TODO: Perform analysis on the response
                 _, sent_time, _, rl_recv_time, rl_end_time, res, rl_response_time = response_data.split('-')
                 processing_latency = int(rl_end_time) - int(rl_recv_time)
+                # Excluding Queueing Time
                 rtt = (response_time - int(rl_response_time)) + (int(rl_recv_time) - int(sent_time))
+                
+                # Including Queueing Time
+                total_rtt = (response_time - int(sent_time)) - processing_latency
 
-                req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) * \
-                                   CLIENT_ANALYSIS_WINDOW_LEN
+                req_window_start = ((int(sent_time) // 1000 - self.start_time) // CLIENT_ANALYSIS_WINDOW_LEN) * CLIENT_ANALYSIS_WINDOW_LEN
                 req_window = f'{req_window_start}-{req_window_start + CLIENT_ANALYSIS_WINDOW_LEN - 1}'
 
-                with open(self.filename, 'a') as file:
-                    print(f'{req_window}:{res}-{processing_latency}-{rtt}', file=file)
+                # with open(self.filename, 'a') as file:
+                #     print(f'{req_window}:{res}-{processing_latency}-{rtt}', file=file)
+
+                self.avg_proc_lat = (self.avg_proc_lat * self.cnt_responses + processing_latency) / (self.cnt_responses + 1)
+                self.avg_rtt = (self.avg_rtt * self.cnt_responses + total_rtt) / (self.cnt_responses + 1)
+                self.accept_rate = (self.accept_rate * self.cnt_responses + (res == 'accepted')) / (self.cnt_responses + 1)
+                self.cnt_responses += 1
+                if (self.cnt_responses % 10) == 0:
+                    print(f'Client {self.id} - Average Processing Latency = {self.avg_proc_lat} ms')
+                    print(f'Client {self.id} - Average RTT = {self.avg_rtt} ms')
+                    print(f'Client {self.id} - Acceptance Rate = {self.accept_rate}')
 
                 # print(f"response = {response_data}")
                 return jsonify({"message": "Response received successfully"})
