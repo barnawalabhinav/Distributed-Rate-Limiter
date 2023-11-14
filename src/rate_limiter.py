@@ -52,20 +52,35 @@ class RLWorker(Process):
         while True:
             reqs = rl_redis.fetch_request(self.name, cnt=PER_SERVER_REQ_CNT)
             if not reqs:
-                time.sleep(1)
                 continue
-            # result = []
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
                 cli_id, _, req_id, req_time = req.split("-")
-                res = self._process_req(
-                    cli_id, int(req_time), req_id, database)
-                rl_redis.add_to_response_queue(req, res)
-                # result.append((cli_id, str(rate)))
-                # result.append((req, res))
+                start_time = int(time.time()*1000)
+                res = self._process_req(cli_id, int(req_time), req_id, database)
+                end_time = int(time.time()*1000)
+                print(f"Time taken to process request: {end_time - start_time}ms")
 
-            # for (key, arg) in result:
-            #     database.set(key, arg)
+                # Try to send response to client
+                msg = req + '-' + str(int(time.time()*1000)) + '-' + res + '-' + str(int(time.time() * 1000))
+                ip, port, msg = msg.split('_')
+                flask_url = f'http://{ip}:{int(port)}/add_response'
+                data = {
+                    'response_data': f'{msg}-{int(time.time() * 1000)}'
+                }
+                try:
+                    response = requests.post(flask_url, json=data)
+                except:
+                    logging.debug("Failed to send response")
+
+                # Check the response
+                if response.status_code == 200:
+                    continue
+                else:
+                    logging.debug(f"Failed to respond to client. Status code: {response.status_code}")
+                    logging.debug(f"Response content: {response.text}")
+
+                rl_redis.add_to_response_queue(req, res)
 
 
 class RateLimiter:
@@ -135,9 +150,6 @@ class RateLimiter:
             print(f'listening at port {self.listen_port}')
             self.app.run(host='0.0.0.0', port=self.listen_port)
         return pid
-
-    # def add_request(self, cli_req: str) -> None:
-    #     self.rds.add_request(cli_req)
 
     def kill(self) -> None:
         for worker in self.rl_workers:
