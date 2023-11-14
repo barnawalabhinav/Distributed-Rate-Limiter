@@ -16,9 +16,6 @@ class Process(ABC):
         self.pid = -1
         self.cpu = kwargs['cpu'] if 'cpu' in kwargs else None
         self.forks = []
-        # self.crash = kwargs['crash'] if 'crash' in kwargs else False
-        # self.slow = kwargs['slow'] if 'slow' in kwargs else False
-        # self.cpulimit = kwargs['limit'] if 'slow' in kwargs and 'limit' in kwargs else 100
 
     def create_and_run(self, **kwargs: Any) -> None:
         pid = os.fork()

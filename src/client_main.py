@@ -29,7 +29,7 @@ if __name__ == '__main__':
         print(f'Creating client {i}')
         clients.append(Client(id=i))
         rate = CLIENT_RATES[i]
-        time_gap = 1000 // rate
+        time_gap = 1000 / rate
         clients[-1].create_and_run(port=CLIENT_PORT_BEG + i, gap=time_gap)
 
     while True:

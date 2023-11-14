@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import time
-
 from redis.client import Redis
 from base_redis import BaseRedis
 from constants import RAFT_PORTS

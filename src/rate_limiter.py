@@ -8,9 +8,8 @@ from typing import Any, Iterable, Optional, Tuple, Final
 
 from flask import Flask, jsonify, request
 import requests
-from redis.client import Redis
 
-from constants import CLI_REQ, N_WORKERS, REQ_LIMIT, DONE, PER_SERVER_REQ_CNT
+from constants import CLI_REQ, N_WORKERS, REQ_LIMIT, DONE, PER_SERVER_REQ_CNT, DEBUG
 from base_redis import BaseRedis
 from process import Process
 
@@ -35,19 +34,22 @@ class RLRedis(BaseRedis):
 
 
 class RLWorker(Process):
-    def _process_req(self, cli_id: str, req_time: int, req_id: str, db: BaseRedis) -> Tuple[int, str]:
-        if db.get_req_count(cli_id) >= REQ_LIMIT:
-            # print(f"Rejecting Request from time {req_time} at time {int(time.time()*1000)}")
-            return "refuted"
-
-        db.add_req(cli_id, req_time, req_id)
-        # print(f"Accepting Request from time {req_time} at time {int(time.time() + 0.5)}")
-        return "accepted"
+    def _process_req(self, cli_id: str, req_time: int, req_id: str, db: BaseRedis, my_rds: BaseRedis) -> Tuple[int, str]:
+        try:
+            if db.get_req_count(cli_id) >= REQ_LIMIT:
+                return "refuted"
+            db.add_req(cli_id, req_time, req_id)
+            return "accepted"
+        except:
+            if my_rds.get_req_count(cli_id) >= REQ_LIMIT:
+                return "refuted"
+            my_rds.add_req(cli_id, req_time, req_id)
+            return "accepted"
 
     # Implement task of workers, fetch requests from api server's redis-stream and process
     def run(self, **kwargs: Any) -> None:
         rl_redis: RLRedis = kwargs['rl_redis']
-        database: BaseRedis = kwargs['database'] if kwargs['database'] is not None else rl_redis
+        database: BaseRedis = kwargs['database']
 
         while True:
             reqs = rl_redis.fetch_request(self.name, cnt=PER_SERVER_REQ_CNT)
@@ -56,13 +58,10 @@ class RLWorker(Process):
             for (_, req) in reqs:
                 req = req[CLI_REQ].decode()
                 cli_id, _, req_id, req_time = req.split("-")
-                start_time = int(time.time()*1000)
-                res = self._process_req(cli_id, int(req_time), req_id, database)
-                end_time = int(time.time()*1000)
-                print(f"Time taken to process request: {end_time - start_time}ms")
-
+                res = self._process_req(cli_id, int(req_time), req_id, database, rl_redis)
+                
                 # Try to send response to client
-                msg = req + '-' + str(int(time.time()*1000)) + '-' + res + '-' + str(int(time.time() * 1000))
+                msg = req + '-' + str(int(time.time()*1000)) + '-' + res
                 ip, port, msg = msg.split('_')
                 flask_url = f'http://{ip}:{int(port)}/add_response'
                 data = {
@@ -71,14 +70,18 @@ class RLWorker(Process):
                 try:
                     response = requests.post(flask_url, json=data)
                 except:
-                    logging.debug("Failed to send response")
+                    if DEBUG:
+                        logging.debug("Failed to send response")
+                    rl_redis.add_to_response_queue(req, res)
+                    continue
 
                 # Check the response
                 if response.status_code == 200:
                     continue
                 else:
-                    logging.debug(f"Failed to respond to client. Status code: {response.status_code}")
-                    logging.debug(f"Response content: {response.text}")
+                    if DEBUG:
+                        logging.debug(f"Failed to respond to client. Status code: {response.status_code}")
+                        logging.debug(f"Response content: {response.text}")
 
                 rl_redis.add_to_response_queue(req, res)
 
@@ -88,6 +91,8 @@ class RateLimiter:
         self.rds = RLRedis(port)
         self.rl_workers = []
         self.listen_port = listen_port
+        if db == None:
+            db = self.rds
 
         for _ in range(N_WORKERS):
             self.rl_workers.append(RLWorker(cpu=cpu))
@@ -95,8 +100,7 @@ class RateLimiter:
 
         self.req_id = 0
         self.app: Final = Flask(__name__)
-        self.app.route('/add_request_to_queue',
-                       methods=['POST'])(self.add_request)
+        self.app.route('/add_request_to_queue', methods=['POST'])(self.add_request)
         self.forks = [self.listen(), self.send_responses()]
 
     def add_request(self):
@@ -104,11 +108,15 @@ class RateLimiter:
             data = request.get_json()
             if 'request_data' in data:
                 request_data = data['request_data']
-                req = request_data + '-' + \
-                    str(self.req_id) + '-' + str(int(time.time() * 1000))
+                cli_id = request_data.split('-')[0] + '@primary'
+                if self.rds.get_req_count(cli_id) >= REQ_LIMIT:
+                    # print(f"Rejecting Request from client {cli_id}")
+                    return jsonify({"error": "Request limit exceeded"}), 200
+                req_time = int(time.time() * 1000)
+                req = request_data + '-' + str(self.req_id) + '-' + str(req_time)
                 self.rds.add_request(req)
+                self.rds.add_req(cli_id, req_time, str(self.req_id))
                 self.req_id += 1
-                # print(f"request = {request_data}")
                 return jsonify({"message": "Request added to Queue successfully"})
             else:
                 return jsonify({"error": "Missing 'request_data' in the request body"}), 400
@@ -129,20 +137,18 @@ class RateLimiter:
                     data = {
                         'response_data': f'{msg}-{int(time.time() * 1000)}'
                     }
-                    # while True:
                     try:
                         response = requests.post(flask_url, json=data)
                     except:
-                        logging.debug("Failed to send response")
+                        if DEBUG:
+                            logging.debug("Failed to send response")
                         continue
 
                     # Check the response
                     if response.status_code != 200:
-                        logging.debug(
-                            f"Failed to respond to client. Status code: {response.status_code}")
-                        logging.debug(f"Response content: {response.text}")
-                    # else:
-                    #     break
+                        if DEBUG:
+                            logging.debug(f"Failed to respond to client. Status code: {response.status_code}")
+                            logging.debug(f"Response content: {response.text}")
 
     def listen(self):
         pid = os.fork()

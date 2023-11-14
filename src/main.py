@@ -7,26 +7,17 @@ from threading import current_thread
 
 from constants import *
 from database import DataBase
-from base_redis import BaseRedis
 from rate_limiter import RateLimiter
 
+
 rate_limiters = []
-# clients = []
-# forks = []
 
 
 def sig_handler(signum, frame):
     for rl in rate_limiters:
         rl.kill()
-    # for client in clients:
-    #     client.kill()
-    # for pid in forks:
-    #     os.kill(pid, signal.SIGKILL)
     logging.info('Stopped!')
     sys.exit()
-
-# This provides the interface to the web-dashboard where we display the results and perform experiments
-# TODO: Decide the arguments that this function takes
 
 
 def dist_rate_limiter():
@@ -57,15 +48,18 @@ def dist_rate_limiter():
         # if not COMMON_DB:
         #     os.system(f"redis-cli -p {START_PORT + N_SERVERS + i} SHUTDOWN; redis-server --port {START_PORT + N_SERVERS + i} --daemonize yes")
 
+    # if COMMON_DB:
+    #     os.system(f"bash configure_raft.sh {' '.join(RAFT_PORTS)}")
+
+    database = DataBase(DB_PORT) if COMMON_DB else None
 
     if COMMON_DB:
-        os.system(f"bash configure_raft.sh {' '.join(RAFT_PORTS)}")
-
-    common_database = DataBase(DB_PORT) if COMMON_DB else None
+        print("Database is common")
+    else:
+        print("Database is not common")
 
     idx = 0
     for ser_id in range(N_SERVERS):
-        database = common_database
         # if not common_database:
         #     database = BaseRedis(START_PORT + N_SERVERS + ser_id)
         # With Pinned CPUs
@@ -74,46 +68,6 @@ def dist_rate_limiter():
         # Without Pinned CPUs
         rate_limiters.append(RateLimiter(port=START_PORT + ser_id, listen_port=REQUEST_PORTS[idx], db=database))
         idx += 1
-
-    # pid = os.fork()
-    # if pid == 0:
-    #     load_bal.run()
-    # else:
-        # forks.append(pid)
-        # for i in range(N_CLIENTS):
-        #     print(f'Creating client {i}')
-        #     clients.append(Client())
-        #     clients[-1].create_and_run(gap=1)
-        # pid = os.fork()
-        # if pid == 0:
-
-    '''
-    clients = set()
-    while len(clients) < N_CLIENTS:
-        for rl in rate_limiters:
-            clients.update(rl.rds.fetch_clients())
-
-    client_ids = []
-    for cli in clients:
-        cli = cli.decode().split(':')[1]
-        client_ids.append(cli)
-
-    while True:
-        # TODO: divyanka, for each client, no of reqs accepted in the past REQ_EXPIRY_TIME seconds
-        time.sleep(REQ_EXPIRY_TIME)
-        for cli_id in client_ids:
-            if COMMON_DB:
-                cnt = database.get_req_count(cli_id)
-            else:
-                cnt = 0
-                for rl in rate_limiters:
-                    cnt += rl.rds.get_req_count(cli_id)
-            print(
-                f'Accepted {cnt} requests for client {cli_id} in past {REQ_EXPIRY_TIME} seconds')
-    '''
-        # else:
-        #     forks.append(pid)
-        #     load_bal.dist_request(rate_limiters)
     
     while True:
         try:
