@@ -111,7 +111,7 @@ class RateLimiter:
                 cli_id = request_data.split('-')[0] + '@primary'
                 if self.rds.get_req_count(cli_id) >= REQ_LIMIT:
                     # print(f"Rejecting Request from client {cli_id}")
-                    return jsonify({"error": "Request limit exceeded"}), 200
+                    return jsonify({"error": "Request limit exceeded"}), 400
                 req_time = int(time.time() * 1000)
                 req = request_data + '-' + str(self.req_id) + '-' + str(req_time)
                 self.rds.add_request(req)

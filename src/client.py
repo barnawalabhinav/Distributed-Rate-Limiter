@@ -25,6 +25,9 @@ class Client(Process):
 
         # clear the contents of the output file
         open(self.filename, 'w').close()
+        
+        # with open(self.filename, 'a') as file:
+        #     print(f'Processing Latency,RTT,Acceptence Rate', file=file)
 
         self.avg_rtt = 0
         self.accept_rate = 0
@@ -69,10 +72,19 @@ class Client(Process):
                 self.avg_rtt = (self.avg_rtt * self.cnt_responses + total_rtt) / (self.cnt_responses + 1)
                 self.accept_rate = (self.accept_rate * self.cnt_responses + (res == 'accepted')) / (self.cnt_responses + 1)
                 self.cnt_responses += 1
-                if (self.cnt_responses % 10) == 0:
+                if (self.cnt_responses % 300) == 0:
+                    # with open(self.filename, 'a') as file:
+                    # #     print(f'{self.avg_proc_lat},{self.avg_rtt},{self.accept_rate}', file=file)
+                    #     print(f'{self.accept_rate}', file=file)
+
                     print(f'Client {self.id} - Average Processing Latency = {self.avg_proc_lat} ms')
                     print(f'Client {self.id} - Average RTT = {self.avg_rtt} ms')
-                    print(f'Client {self.id} - Acceptance Rate = {self.accept_rate}')
+                    # print(f'Client {self.id} - Acceptance Rate = {self.accept_rate}')
+
+                    # self.avg_rtt = 0
+                    # self.accept_rate = 0
+                    # self.avg_proc_lat = 0
+                    # self.cnt_responses = 0
 
                 return jsonify({"message": "Response received successfully"})
             else:
@@ -86,9 +98,9 @@ class Client(Process):
         s.connect(("8.8.8.8", 80))
         self.ip = s.getsockname()[0]
         self.port = kwargs['port']
-        for i in range(len(REQUEST_PORTS)):
+        for num_attempts in range(len(REQUEST_PORTS)):
             self.flask_urls.append(
-                f"http://{REQUEST_IP}:{REQUEST_PORTS[i]}/add_request_to_queue")
+                f"http://{REQUEST_IP}:{REQUEST_PORTS[num_attempts]}/add_request_to_queue")
 
         # Number of milliseconds to wait before sending the next request
         time_gap: int = kwargs['gap']
@@ -99,11 +111,12 @@ class Client(Process):
             app.route('/add_response', methods=['POST'])(self._get_response)
             app.run(host='0.0.0.0', port=self.port)
         else:
+            success_rate = 0
+            num_attempts = 0
             self.forks.append(pid)
             ser_id = 0
-            i = 0
             prev_time = int(time.time() * 1000)
-            while i < TOTAL_CLIENT_REQUESTS[self.id]:
+            while num_attempts < TOTAL_CLIENT_REQUESTS[self.id]:
                 data = {
                     'request_data': (str(self.ip) + '_' + str(self.port) + '_' + str(self.pid) + "-" + str(
                         int(time.time() * 1000)))
@@ -123,7 +136,11 @@ class Client(Process):
                         logging.debug(f"Failed to add request to the queue. Status code: {response.status_code}")
                         logging.debug(f"Response content: {response.text}")
 
-                i += 1
+                success_rate = (success_rate * num_attempts + (response.status_code == 200)) / (num_attempts + 1)
+                # if (num_attempts + 1) % 10 == 0:
+                #     print(f'Client {self.id} Request Success rate = {success_rate}')
+
+                num_attempts += 1
                 curr_gap = int(time.time() * 1000) - prev_time
                 prev_time = int(time.time() * 1000)
                 if curr_gap < time_gap:

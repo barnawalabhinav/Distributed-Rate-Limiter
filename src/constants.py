@@ -15,9 +15,9 @@ CLIENTS: Final[str] = "CLIENT_IDS"
 WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 
-N_CLIENTS: Final[int] = 4
+N_CLIENTS: Final[int] = 32
 CLIENT_RATES: Final[List[int]] = [20] * N_CLIENTS  # per second
-N_WORKERS: Final[int] = 16
+N_WORKERS: Final[int] = 8
 
 PER_SERVER_REQ_CNT: Final[int] = 100
 REQ_LIMIT: Final[int] = 10
