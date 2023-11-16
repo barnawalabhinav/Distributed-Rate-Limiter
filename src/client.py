@@ -79,7 +79,7 @@ class Client(Process):
 
                     print(f'Client {self.id} - Average Processing Latency = {self.avg_proc_lat} ms')
                     print(f'Client {self.id} - Average RTT = {self.avg_rtt} ms')
-                    # print(f'Client {self.id} - Acceptance Rate = {self.accept_rate}')
+                    print(f'Client {self.id} - Acceptance Rate = {self.accept_rate}')
 
                     # self.avg_rtt = 0
                     # self.accept_rate = 0
@@ -137,8 +137,8 @@ class Client(Process):
                         logging.debug(f"Response content: {response.text}")
 
                 success_rate = (success_rate * num_attempts + (response.status_code == 200)) / (num_attempts + 1)
-                # if (num_attempts + 1) % 10 == 0:
-                #     print(f'Client {self.id} Request Success rate = {success_rate}')
+                if (num_attempts + 1) % 300 == 0:
+                    print(f'Client {self.id} Request Success rate = {success_rate}')
 
                 num_attempts += 1
                 curr_gap = int(time.time() * 1000) - prev_time

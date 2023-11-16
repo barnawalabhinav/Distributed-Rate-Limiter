@@ -15,7 +15,7 @@ CLIENTS: Final[str] = "CLIENT_IDS"
 WRK_GRP: Final[str] = "WORKER"
 CLI_REQ: Final[bytes] = b"REQUEST"
 
-N_CLIENTS: Final[int] = 32
+N_CLIENTS: Final[int] = 4
 CLIENT_RATES: Final[List[int]] = [20] * N_CLIENTS  # per second
 N_WORKERS: Final[int] = 8
 
@@ -30,7 +30,7 @@ CLIENT_PORT_BEG: Final = 9080
 DB_IP: Final[str] = 'localhost'
 DB_PORT: Final[int] = 6000
 
-COMMON_DB: Final[bool] = False
+COMMON_DB: Final[bool] = True
 RAFT_PORTS: Final = [str(DB_PORT), str(DB_PORT + 1), str(DB_PORT + 2)]
 
 CLIENT_ANALYSIS_WINDOW_LEN: Final[int] = 100
