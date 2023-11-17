@@ -1,10 +1,14 @@
 # Distributed-Rate-Limiter
+
 Rate Limiter and Throttling System that maintains a consistent rate and limits access to multiple servers.
 
 ## Requirements
+
 Redis Version 7.2.0
 
 ## How to Run
+
+Migrate to the directory `src`, and
 
 1. Run this command on one terminal/machine for the server.
 
